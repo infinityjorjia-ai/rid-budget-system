@@ -1,0 +1,1953 @@
+<!DOCTYPE html>
+<html lang="th" class="h-full bg-slate-50">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ระบบบริหารจัดการการขออนุมัติโอนเงินจัดสรร (งานช้า–เร็ว) | กรมชลประทาน</title>
+    
+    <!-- Google Fonts: Prompt & Sarabun -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Prompt:wght@300;400;500;600;700&family=Sarabun:wght@400;500;600;700&display=swap" rel="stylesheet">
+    
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        rid: {
+                            50: '#f0f9ff',
+                            100: '#e0f2fe',
+                            500: '#0284c7',
+                            600: '#0369a1',
+                            800: '#075985',
+                            900: '#0c4a6e',
+                            dark: '#0a2540',
+                            accent: '#0d9488',
+                            gold: '#d97706'
+                        }
+                    },
+                    fontFamily: {
+                        prompt: ['Prompt', 'sans-serif'],
+                        sarabun: ['Sarabun', 'sans-serif']
+                    }
+                }
+            }
+        }
+    </script>
+
+    <!-- Font Awesome Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    
+    <!-- Chart.js CDN -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+    <style>
+        body {
+            font-family: 'Prompt', 'Sarabun', sans-serif;
+        }
+        .sarabun-text {
+            font-family: 'Sarabun', sans-serif;
+        }
+        /* Custom scrollbars */
+        ::-webkit-scrollbar {
+            width: 6px;
+            height: 6px;
+        }
+        ::-webkit-scrollbar-track {
+            background: #f1f5f9;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #cbd5e1;
+            border-radius: 4px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: #94a3b8;
+        }
+        .fade-in {
+            animation: fadeIn 0.25s ease-in-out;
+        }
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(4px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+    </style>
+</head>
+<body class="min-h-full flex flex-col bg-slate-50 text-slate-800 antialiased pb-12">
+
+    <!-- Notification Toast Container -->
+    <div id="toast-container" class="fixed top-5 right-5 z-50 flex flex-col gap-2 max-w-md w-full pointer-events-none"></div>
+
+    <!-- Hidden File Input for Custom Logo Upload -->
+    <input type="file" id="logo-file-input" accept="image/*" class="hidden" onchange="handleLogoUpload(event)">
+
+    <!-- Dynamic Autocomplete Datalist for Item Names -->
+    <datalist id="existing-item-names-datalist"></datalist>
+
+    <!-- Confirmation Modal -->
+    <div id="custom-modal" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 flex items-center justify-center p-4 hidden">
+        <div class="bg-white rounded-2xl shadow-2xl max-w-md w-full p-6 border border-slate-100 fade-in">
+            <div class="flex items-center gap-3 text-amber-600 mb-3">
+                <div class="w-10 h-10 rounded-full bg-amber-100 flex items-center justify-center shrink-0">
+                    <i class="fa-solid fa-triangle-exclamation text-lg"></i>
+                </div>
+                <h3 id="modal-title" class="font-semibold text-lg text-slate-800">ยืนยันการทำรายการ</h3>
+            </div>
+            <p id="modal-message" class="text-slate-600 text-sm mb-6 leading-relaxed">คุณต้องการดำเนินการนี้ใช่หรือไม่?</p>
+            <div class="flex justify-end gap-3">
+                <button id="modal-cancel-btn" class="px-4 py-2 rounded-xl border border-slate-300 text-slate-600 hover:bg-slate-100 text-sm font-medium transition">ยกเลิก</button>
+                <button id="modal-confirm-btn" class="px-4 py-2 rounded-xl bg-red-600 text-white hover:bg-red-700 text-sm font-medium transition shadow-md shadow-red-600/20">ยืนยัน</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- MAIN HEADER -->
+    <header class="bg-gradient-to-r from-rid-dark via-rid-900 to-teal-900 text-white shadow-xl relative overflow-hidden border-b-4 border-teal-500">
+        <div class="absolute inset-0 opacity-10 bg-[radial-gradient(#fff_1px,transparent_1px)] [background-size:16px_16px]"></div>
+        
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 relative z-10">
+            <div class="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+                
+                <!-- Title & System Rabbit Logo -->
+                <div class="flex items-start sm:items-center gap-4">
+                    <div class="relative group shrink-0">
+                        <div id="header-logo-container" class="w-16 h-16 sm:w-20 sm:h-20 rounded-2xl bg-emerald-700 border-2 border-white/80 shadow-lg overflow-hidden flex items-center justify-center cursor-pointer transition transform group-hover:scale-105" title="คลิกเพื่ออัปเดต/เปลี่ยนรูปโลโก้ประจำระบบ">
+                            <!-- Default Standing White Rabbit SVG Logo -->
+                            <svg id="default-rabbit-svg" class="w-full h-full object-cover" viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">
+                                <rect width="100" height="100" fill="#2e7d32" />
+                                <circle cx="50" cy="50" r="48" fill="#43a047" />
+                                <path d="M 10,75 Q 30,65 50,70 T 90,75 L 100,100 L 0,100 Z" fill="#1b5e20"/>
+                                <path d="M 5,82 Q 25,72 55,80 T 95,82 L 100,100 L 0,100 Z" fill="#2e7d32"/>
+                                <ellipse cx="44" cy="85" rx="5" ry="3" fill="#f5f5f5"/>
+                                <ellipse cx="56" cy="85" rx="5" ry="3" fill="#f5f5f5"/>
+                                <path d="M 40,52 C 34,62 34,78 41,84 C 47,86 53,86 59,84 C 66,78 66,62 60,52 Z" fill="#ffffff" />
+                                <ellipse cx="50" cy="65" rx="8" ry="12" fill="#fafafa"/>
+                                <ellipse cx="42" cy="60" rx="3.5" ry="6" fill="#f5f5f5" transform="rotate(-15 42 60)"/>
+                                <ellipse cx="58" cy="60" rx="3.5" ry="6" fill="#f5f5f5" transform="rotate(15 58 60)"/>
+                                <path d="M 43,36 C 35,20 36,8 43,10 C 47,12 47,24 46,36 Z" fill="#ffffff"/>
+                                <path d="M 42,32 C 38,20 39,12 43,13 C 45,14 45,23 44,32 Z" fill="#ffccbc"/>
+                                <path d="M 54,36 C 50,18 55,6 61,8 C 65,10 61,22 57,36 Z" fill="#ffffff"/>
+                                <path d="M 54,32 C 51,19 54,10 59,11 C 61,12 59,21 56,32 Z" fill="#ffccbc"/>
+                                <ellipse cx="50" cy="42" rx="11" ry="10" fill="#ffffff"/>
+                                <circle cx="55" cy="40" r="2" fill="#212121"/>
+                                <circle cx="55.6" cy="39.4" r="0.7" fill="#ffffff"/>
+                                <path d="M 58,43 Q 60,44 58,45 Z" fill="#ffab91"/>
+                                <path d="M 58,45 Q 57,47 55,46" stroke="#b0bec5" stroke-width="0.8" fill="none"/>
+                                <circle cx="37" cy="74" r="4" fill="#ffffff"/>
+                            </svg>
+                            <!-- Custom Uploaded Logo Image Holder -->
+                            <img id="custom-logo-img" class="w-full h-full object-cover hidden" alt="โลโก้ประจำระบบ">
+                        </div>
+                        <button onclick="triggerLogoUpload()" class="absolute -bottom-1 -right-1 bg-slate-900/90 text-teal-300 hover:text-white p-1.2 rounded-full border border-teal-400/50 shadow text-[10px] w-6 h-6 flex items-center justify-center" title="เปลี่ยนรูปโลโก้ประจำระบบ">
+                            <i class="fa-solid fa-camera"></i>
+                        </button>
+                    </div>
+
+                    <div>
+                        <div class="inline-flex items-center gap-2 px-2.5 py-0.5 rounded-full bg-teal-500/20 border border-teal-400/30 text-teal-200 text-xs font-medium mb-1">
+                            <i class="fa-solid fa-building-columns text-xs"></i> กรมชลประทาน (Royal Irrigation Department)
+                        </div>
+                        <h1 class="text-xl sm:text-2xl font-bold tracking-tight text-white drop-shadow-sm">
+                            ระบบบริหารจัดการการขออนุมัติโอนเงินจัดสรร (งานช้า–เร็ว)
+                        </h1>
+                        <p class="text-xs sm:text-sm text-slate-300 mt-0.5 font-light">
+                            บริหารการโอนเปลี่ยนแปลงงบประมาณระหว่างรายการงานที่ล่าช้ากับรายการที่ปฏิบัติงานเร็วกว่าแผน
+                        </p>
+                        
+                        <!-- Internal Scope Note Banner -->
+                        <div class="mt-2.5 bg-amber-500/20 border border-amber-400/40 rounded-xl px-3 py-1.5 text-xs text-amber-200 flex items-start sm:items-center gap-2 backdrop-blur">
+                            <i class="fa-solid fa-triangle-exclamation text-amber-400 shrink-0 mt-0.5 sm:mt-0"></i>
+                            <span><strong class="text-amber-300">หมายเหตุ:</strong> ระบบนี้จัดทำขึ้นเพื่อใช้บริหารจัดการงบประมาณภายใน <strong>กองจัดทำงบประมาณด้านเศรษฐกิจ 2 ส่วนกระทรวงเกษตรและสหกรณ์ 3 และ 4</strong> เท่านั้น</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Header Action Buttons -->
+                <div class="flex flex-wrap items-center gap-2 sm:gap-3">
+                    <button type="button" onclick="triggerLogoUpload()" class="px-3 py-2 bg-white/10 hover:bg-white/20 text-teal-200 rounded-xl text-xs font-medium border border-white/20 transition flex items-center gap-1.5">
+                        <i class="fa-solid fa-image"></i>
+                        <span class="hidden sm:inline">เปลี่ยนโลโก้ระบบ</span>
+                    </button>
+                    <button id="btn-new-form" onclick="resetForm()" class="px-4 py-2.5 bg-teal-500 hover:bg-teal-600 text-white font-medium rounded-xl text-sm transition shadow-lg shadow-teal-500/20 flex items-center gap-2 active:scale-95">
+                        <i class="fa-solid fa-plus-circle"></i>
+                        <span>สร้างคำขอใหม่ / ล้างฟอร์ม</span>
+                    </button>
+                </div>
+            </div>
+
+            <!-- Connection Status & Shared Mode Alert Bar -->
+            <div class="mt-5 pt-4 border-t border-white/10 flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs">
+                <div class="flex flex-wrap items-center gap-2 text-slate-200 bg-white/5 px-3 py-1.5 rounded-lg border border-white/10 backdrop-blur">
+                    <span class="relative flex h-2.5 w-2.5">
+                      <span id="sync-ping" class="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+                      <span id="sync-dot" class="relative inline-flex rounded-full h-2.5 w-2.5 bg-emerald-500"></span>
+                    </span>
+                    <span id="connection-status-text" class="font-medium">กำลังเชื่อมต่อฐานข้อมูลกลาง Firebase (slow-fast)...</span>
+                    <span class="text-slate-400">|</span>
+                    <span class="text-slate-300">กองจัดทำงบประมาณด้านเศรษฐกิจ 2 (ส่วนกระทรวงเกษตรฯ 3 และ 4)</span>
+                </div>
+
+                <!-- User Profile Display -->
+                <div class="flex items-center gap-2 bg-slate-900/50 px-3 py-1.5 rounded-lg border border-white/10">
+                    <i class="fa-solid fa-user-circle text-teal-400"></i>
+                    <span class="text-slate-300">ผู้บันทึก/แก้ไข:</span>
+                    <input type="text" id="user-display-name" onchange="saveUserName(this.value)" class="bg-transparent text-white font-semibold border-b border-teal-400/50 focus:border-teal-300 focus:outline-none px-1 text-xs w-36 sm:w-44" placeholder="ระบุชื่อผู้ใช้งาน...">
+                    <i class="fa-solid fa-pen text-[10px] text-slate-400" title="แก้ไขชื่อ"></i>
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <!-- MAIN CONTAINER -->
+    <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 mt-6 flex-1 w-full">
+        
+        <!-- Navigation Tabs -->
+        <div class="flex border-b border-slate-200 mb-6 bg-white rounded-t-2xl px-4 pt-3 shadow-sm gap-2 overflow-x-auto">
+            <button id="tab-btn-form" onclick="switchTab('form')" class="tab-btn active px-4 py-3 font-medium text-sm border-b-2 border-rid-600 text-rid-600 flex items-center gap-2 whitespace-nowrap transition">
+                <i class="fa-solid fa-pen-to-square"></i>
+                <span>แบบฟอร์มขอโอนเงินจัดสรร</span>
+            </button>
+            <button id="tab-btn-records" onclick="switchTab('records')" class="tab-btn px-4 py-3 font-medium text-sm border-b-2 border-transparent text-slate-500 hover:text-slate-700 flex items-center gap-2 whitespace-nowrap transition">
+                <i class="fa-solid fa-folder-open"></i>
+                <span>รายการคำขอที่บันทึกไว้</span>
+                <span id="badge-records-count" class="ml-1 bg-slate-100 text-slate-600 px-2 py-0.5 rounded-full text-xs font-semibold">0</span>
+            </button>
+            <button id="tab-btn-analytics" onclick="switchTab('analytics')" class="tab-btn px-4 py-3 font-medium text-sm border-b-2 border-transparent text-slate-500 hover:text-slate-700 flex items-center gap-2 whitespace-nowrap transition">
+                <i class="fa-solid fa-chart-pie"></i>
+                <span>สรุปภาพรวม & วิเคราะห์ (Dashboard)</span>
+            </button>
+            <button id="tab-btn-logs" onclick="switchTab('logs')" class="tab-btn px-4 py-3 font-medium text-sm border-b-2 border-transparent text-slate-500 hover:text-slate-700 flex items-center gap-2 whitespace-nowrap transition">
+                <i class="fa-solid fa-clock-rotate-left"></i>
+                <span>ประวัติการทำงาน (Audit Log)</span>
+            </button>
+        </div>
+
+        <!-- ================= TAB 1: FORM SECTION ================= -->
+        <div id="tab-content-form" class="tab-content">
+            
+            <!-- Edit Mode Notice Banner -->
+            <div id="edit-mode-banner" class="hidden mb-6 bg-amber-50 border-l-4 border-amber-500 p-4 rounded-r-2xl shadow-sm flex flex-wrap items-center justify-between gap-3 fade-in">
+                <div class="flex items-center gap-3">
+                    <div class="w-9 h-9 rounded-xl bg-amber-100 text-amber-700 flex items-center justify-center shrink-0">
+                        <i class="fa-solid fa-pen-to-square text-base"></i>
+                    </div>
+                    <div>
+                        <h4 class="font-semibold text-amber-900 text-sm">✎ กำลังแก้ไขคำขอที่เคยบันทึกไว้</h4>
+                        <p class="text-xs text-amber-700">เมื่อกดบันทึกจะเป็นการอัปเดตรายการเดิม (ID: <span id="editing-doc-id" class="font-mono font-semibold"></span>) ไม่สร้างรายการซ้ำ</p>
+                    </div>
+                </div>
+                <button onclick="cancelEditMode()" class="px-3 py-1.5 bg-amber-200/60 hover:bg-amber-200 text-amber-900 rounded-lg text-xs font-medium transition flex items-center gap-1.5">
+                    <i class="fa-solid fa-xmark"></i>
+                    <span>ยกเลิกการแก้ไข</span>
+                </button>
+            </div>
+
+            <form id="transfer-form" onsubmit="handleFormSubmit(event)" class="space-y-6">
+
+                <!-- STEP 1: ข้อมูลเริ่มต้น -->
+                <div class="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
+                    <div class="bg-slate-900 text-white px-6 py-4 flex items-center justify-between">
+                        <div class="flex items-center gap-3">
+                            <span class="w-8 h-8 rounded-full bg-teal-500 text-white font-bold flex items-center justify-center text-sm shadow">1</span>
+                            <div>
+                                <h2 class="font-bold text-base">ข้อมูลเริ่มต้น</h2>
+                                <p class="text-xs text-slate-300">ระบุรายละเอียดเอกสารต้นเรื่องและลิงก์แนบไฟล์ PDF</p>
+                            </div>
+                        </div>
+                        <div class="text-xs text-slate-300 flex items-center gap-2">
+                            <span>ผู้บันทึก/แก้ไข:</span>
+                            <span id="form-recorder-name" class="font-semibold text-teal-300 bg-slate-800 px-2.5 py-1 rounded-md border border-slate-700">กำลังตรวจสอบ...</span>
+                        </div>
+                    </div>
+
+                    <div class="p-6 grid grid-cols-1 md:grid-cols-2 gap-6">
+                        <!-- หนังสือ ที่ -->
+                        <div>
+                            <label class="block text-xs font-semibold text-slate-700 mb-1.5">
+                                หนังสือกรมชลประทาน ที่ <span class="text-red-500">*</span>
+                            </label>
+                            <div class="relative">
+                                <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-slate-400">
+                                    <i class="fa-solid fa-hashtag text-sm"></i>
+                                </div>
+                                <input type="text" id="doc-no" required placeholder="เช่น กษ 0305/1234" class="w-full pl-9 pr-3 py-2.5 rounded-xl border border-slate-300 focus:ring-2 focus:ring-rid-500 focus:border-rid-500 text-sm transition">
+                            </div>
+                        </div>
+
+                        <!-- ลงวันที่ -->
+                        <div>
+                            <label class="block text-xs font-semibold text-slate-700 mb-1.5">
+                                ลงวันที่ <span class="text-red-500">*</span>
+                            </label>
+                            <div class="relative">
+                                <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-slate-400">
+                                    <i class="fa-regular fa-calendar text-sm"></i>
+                                </div>
+                                <input type="date" id="doc-date" required class="w-full pl-9 pr-3 py-2.5 rounded-xl border border-slate-300 focus:ring-2 focus:ring-rid-500 focus:border-rid-500 text-sm transition">
+                            </div>
+                        </div>
+
+                        <!-- ข้อความต้นเรื่อง -->
+                        <div class="md:col-span-2">
+                            <label class="block text-xs font-semibold text-slate-700 mb-1.5">
+                                ข้อความต้นเรื่อง / สรุปสาระสำคัญ <span class="text-red-500">*</span>
+                            </label>
+                            <textarea id="doc-subject" rows="2" required placeholder="เช่น ขออนุมัติโอนเปลี่ยนแปลงงบประมาณรายจ่ายประจำปี เพื่อถัวจ่ายรายการที่มีผลการปฏิบัติงานเร็วกว่าแผน..." class="w-full px-3 py-2.5 rounded-xl border border-slate-300 focus:ring-2 focus:ring-rid-500 focus:border-rid-500 text-sm transition sarabun-text"></textarea>
+                        </div>
+
+                        <!-- URL ไฟล์ต้นเรื่อง -->
+                        <div>
+                            <label class="block text-xs font-semibold text-slate-700 mb-1.5">
+                                URL ไฟล์ต้นเรื่อง (PDF)
+                            </label>
+                            <div class="flex gap-2">
+                                <div class="relative flex-1">
+                                    <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-slate-400">
+                                        <i class="fa-solid fa-link text-sm"></i>
+                                    </div>
+                                    <input type="url" id="url-source-pdf" placeholder="https://sharepoint.com/... หรือ Google Drive" class="w-full pl-9 pr-3 py-2.5 rounded-xl border border-slate-300 focus:ring-2 focus:ring-rid-500 text-sm transition">
+                                </div>
+                                <button type="button" onclick="openPdfLink('url-source-pdf')" class="px-3.5 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl text-xs font-medium transition border border-slate-300 flex items-center gap-1.5 shrink-0">
+                                    <i class="fa-solid fa-arrow-up-right-from-square"></i>
+                                    <span>เปิดไฟล์</span>
+                                </button>
+                            </div>
+                        </div>
+
+                        <!-- URL ไฟล์อนุมัติ -->
+                        <div>
+                            <label class="block text-xs font-semibold text-slate-700 mb-1.5">
+                                URL ไฟล์อนุมัติ (PDF)
+                            </label>
+                            <div class="flex gap-2">
+                                <div class="relative flex-1">
+                                    <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-slate-400">
+                                        <i class="fa-solid fa-file-circle-check text-sm"></i>
+                                    </div>
+                                    <input type="url" id="url-approved-pdf" placeholder="https://sharepoint.com/... หรือ Google Drive" class="w-full pl-9 pr-3 py-2.5 rounded-xl border border-slate-300 focus:ring-2 focus:ring-rid-500 text-sm transition">
+                                </div>
+                                <button type="button" onclick="openPdfLink('url-approved-pdf')" class="px-3.5 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl text-xs font-medium transition border border-slate-300 flex items-center gap-1.5 shrink-0">
+                                    <i class="fa-solid fa-arrow-up-right-from-square"></i>
+                                    <span>เปิดไฟล์</span>
+                                </button>
+                            </div>
+                        </div>
+
+                        <!-- Hint Banner -->
+                        <div class="md:col-span-2 bg-blue-50/70 border border-blue-200/70 rounded-xl p-3 text-xs text-slate-600 flex items-start gap-2.5">
+                            <i class="fa-solid fa-circle-info text-blue-600 mt-0.5 text-sm"></i>
+                            <div>
+                                <span class="font-semibold text-blue-900">คำแนะนำ:</span> ระบุลิงก์ URL ของไฟล์ PDF ที่จัดเก็บไว้ (เช่น SharePoint, OneDrive, Google Drive แบบแชร์ลิงก์) เพื่อให้สามารถกดเปิด/ดาวน์โหลดได้ในภายหลัง — สามารถกลับมาแก้ไขลิงก์นี้ได้ตลอดแม้บันทึกคำขอไปแล้ว
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+
+                <!-- STEP 2: ข้อมูลรายการงานช้า (โอนลด) -->
+                <div class="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
+                    <div class="bg-rose-900 text-white px-6 py-4 flex items-center justify-between">
+                        <div class="flex items-center gap-3">
+                            <span class="w-8 h-8 rounded-full bg-rose-500 text-white font-bold flex items-center justify-center text-sm shadow">2</span>
+                            <div>
+                                <h2 class="font-bold text-base">ข้อมูลรายการงานช้า (โอนลด)</h2>
+                                <p class="text-xs text-rose-200">กรอกได้สูงสุด 5 รายการ — ไม่บังคับกรอกให้ครบทุกรายการ</p>
+                            </div>
+                        </div>
+                        <span class="text-xs bg-rose-950/60 text-rose-200 px-3 py-1 rounded-full border border-rose-700">รายการ 2.1 – 2.5</span>
+                    </div>
+
+                    <div class="p-6 space-y-6" id="slow-items-container">
+                        <!-- Dynamic slow items -->
+                    </div>
+
+                    <!-- Total Slow Card (2.6) -->
+                    <div class="bg-rose-50 border-t border-rose-200 p-6 flex flex-col sm:flex-row items-center justify-between gap-4">
+                        <div class="flex items-center gap-3">
+                            <div class="w-10 h-10 rounded-xl bg-rose-600 text-white flex items-center justify-center font-bold text-lg shadow">
+                                2.6
+                            </div>
+                            <div>
+                                <h4 class="font-bold text-rose-950 text-base">จำนวนเงินโอนลดทั้งหมด (รวม 2.1–2.5)</h4>
+                                <p class="text-xs text-rose-700">คำนวณรวมจากรายการงานช้าข้างต้นอัตโนมัติ</p>
+                            </div>
+                        </div>
+                        <div class="text-right">
+                            <div class="text-2xl sm:text-3xl font-extrabold text-rose-700 font-mono" id="total-slow-display">0.00</div>
+                            <div class="text-xs text-rose-600 font-medium">บาท (THB)</div>
+                        </div>
+                    </div>
+                </div>
+
+
+                <!-- BALANCE CHECK BAR -->
+                <div id="balance-bar" class="bg-slate-900 text-white rounded-2xl p-5 shadow-lg border-2 border-slate-800 flex flex-col md:flex-row items-center justify-between gap-4 transition-all">
+                    <div class="flex items-center gap-4 w-full md:w-auto justify-between md:justify-start">
+                        <div class="text-center md:text-left">
+                            <span class="text-xs text-rose-400 block font-medium">รวมงานช้า (2.6) โอนลด</span>
+                            <span id="bar-slow-total" class="text-lg font-bold font-mono text-rose-300">0.00</span>
+                        </div>
+                        <div class="text-slate-500 font-bold text-xl">⇄</div>
+                        <div class="text-center md:text-left">
+                            <span class="text-xs text-emerald-400 block font-medium">รวมงานเร็ว (3.6) โอนเพิ่ม</span>
+                            <span id="bar-fast-total" class="text-lg font-bold font-mono text-emerald-300">0.00</span>
+                        </div>
+                    </div>
+
+                    <!-- Dynamic Balance Indicator -->
+                    <div id="balance-status-badge" class="px-5 py-2.5 rounded-xl bg-slate-800 text-slate-300 text-sm font-semibold flex items-center gap-2 border border-slate-700 w-full md:w-auto justify-center">
+                        <i class="fa-solid fa-spinner animate-spin text-slate-400"></i>
+                        <span>รอกรอกข้อมูล</span>
+                    </div>
+                </div>
+
+
+                <!-- STEP 3: ข้อมูลรายการงานเร็ว (โอนเพิ่ม) -->
+                <div class="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
+                    <div class="bg-emerald-900 text-white px-6 py-4 flex items-center justify-between">
+                        <div class="flex items-center gap-3">
+                            <span class="w-8 h-8 rounded-full bg-emerald-500 text-white font-bold flex items-center justify-center text-sm shadow">3</span>
+                            <div>
+                                <h2 class="font-bold text-base">ข้อมูลรายการงานเร็ว (โอนเพิ่ม)</h2>
+                                <p class="text-xs text-emerald-200">กรอกได้สูงสุด 5 รายการ — ไม่บังคับกรอกให้ครบทุกรายการ</p>
+                            </div>
+                        </div>
+                        <span class="text-xs bg-emerald-950/60 text-emerald-200 px-3 py-1 rounded-full border border-emerald-700">รายการ 3.1 – 3.5</span>
+                    </div>
+
+                    <div class="p-6 space-y-6" id="fast-items-container">
+                        <!-- Dynamic fast items -->
+                    </div>
+
+                    <!-- Total Fast Card (3.6) -->
+                    <div class="bg-emerald-50 border-t border-emerald-200 p-6 flex flex-col sm:flex-row items-center justify-between gap-4">
+                        <div class="flex items-center gap-3">
+                            <div class="w-10 h-10 rounded-xl bg-emerald-600 text-white flex items-center justify-center font-bold text-lg shadow">
+                                3.6
+                            </div>
+                            <div>
+                                <h4 class="font-bold text-emerald-950 text-base">จำนวนเงินโอนเพิ่มทั้งหมด (รวม 3.1–3.5)</h4>
+                                <p class="text-xs text-emerald-700">คำนวณรวมจากรายการงานเร็วข้างต้นอัตโนมัติ</p>
+                            </div>
+                        </div>
+                        <div class="text-right">
+                            <div class="text-2xl sm:text-3xl font-extrabold text-emerald-700 font-mono" id="total-fast-display">0.00</div>
+                            <div class="text-xs text-emerald-600 font-medium">บาท (THB)</div>
+                        </div>
+                    </div>
+                </div>
+
+
+                <!-- STEP 4: ข้อความสรุปแบบเป็นทางการ (Auto-Generated Wording) -->
+                <div class="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
+                    <div class="bg-slate-800 text-white px-6 py-4 flex items-center justify-between">
+                        <div class="flex items-center gap-3">
+                            <span class="w-8 h-8 rounded-full bg-slate-600 text-white font-bold flex items-center justify-center text-sm shadow">4</span>
+                            <div>
+                                <h2 class="font-bold text-base">สรุปข้อมูลข้อความหนังสือ</h2>
+                                <p class="text-xs text-slate-300">ระบบสร้างร่างข้อความสรุปเสนอผู้บริหารให้อัตโนมัติ</p>
+                            </div>
+                        </div>
+                        <button type="button" onclick="copySummaryText()" class="px-3 py-1.5 bg-slate-700 hover:bg-slate-600 text-teal-300 rounded-lg text-xs font-medium transition border border-slate-600 flex items-center gap-1.5">
+                            <i class="fa-regular fa-copy"></i>
+                            <span>คัดลอกข้อความสรุป</span>
+                        </button>
+                    </div>
+                    <div class="p-6">
+                        <div id="auto-summary-box" class="bg-slate-50 border border-slate-200 rounded-xl p-4 font-sarabun text-sm text-slate-700 leading-relaxed whitespace-pre-line select-all min-h-[100px]">
+                            กรุณากรอกข้อมูลในส่วนที่ 1, 2 และ 3 เพื่อสร้างข้อความสรุปอัตโนมัติ...
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Form Submit Action Bar -->
+                <div class="flex flex-col sm:flex-row items-center justify-end gap-3 pt-2">
+                    <button type="button" onclick="resetForm()" class="w-full sm:w-auto px-6 py-3 rounded-xl border border-slate-300 text-slate-700 hover:bg-slate-100 font-semibold text-sm transition">
+                        ล้างฟอร์ม
+                    </button>
+                    <button type="submit" id="btn-submit-form" class="w-full sm:w-auto px-8 py-3 rounded-xl bg-rid-600 hover:bg-rid-800 text-white font-bold text-sm transition shadow-lg shadow-rid-600/30 flex items-center justify-center gap-2">
+                        <i class="fa-solid fa-cloud-arrow-up"></i>
+                        <span id="btn-submit-label">บันทึกข้อมูลคำขอ</span>
+                    </button>
+                </div>
+            </form>
+        </div>
+
+        <!-- ================= TAB 2: SAVED RECORDS ================= -->
+        <div id="tab-content-records" class="tab-content hidden space-y-6">
+            
+            <div class="bg-white rounded-2xl shadow-sm border border-slate-200 p-6">
+                <!-- Search & Action Bar -->
+                <div class="flex flex-col sm:flex-row items-center justify-between gap-4 mb-6">
+                    <div class="relative w-full sm:w-96">
+                        <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-slate-400">
+                            <i class="fa-solid fa-magnifying-glass text-sm"></i>
+                        </div>
+                        <input type="text" id="records-search" oninput="filterRecords()" placeholder="ค้นหาด้วย เลขหนังสือ, เรื่อง, ชื่อรายการ..." class="w-full pl-9 pr-4 py-2 rounded-xl border border-slate-300 focus:ring-2 focus:ring-rid-500 text-sm">
+                    </div>
+
+                    <div class="flex items-center gap-2 w-full sm:w-auto justify-end">
+                        <button onclick="exportToCSV()" class="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-semibold shadow-sm transition flex items-center gap-2">
+                            <i class="fa-solid fa-file-csv"></i>
+                            <span>ส่งออก CSV (ครบทุกฟิลด์)</span>
+                        </button>
+                        <button onclick="window.print()" class="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl text-xs font-semibold border border-slate-300 transition flex items-center gap-2">
+                            <i class="fa-solid fa-print"></i>
+                            <span>พิมพ์รายงาน</span>
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Records Table -->
+                <div class="overflow-x-auto rounded-xl border border-slate-200">
+                    <table class="w-full text-left border-collapse text-xs">
+                        <thead>
+                            <tr class="bg-slate-800 text-white font-semibold uppercase tracking-wider">
+                                <th class="p-3 text-center w-12">#</th>
+                                <th class="p-3">หนังสือ ที่ / ลงวันที่</th>
+                                <th class="p-3">ข้อความต้นเรื่อง</th>
+                                <th class="p-3 text-right text-rose-300">โอนลด (บาท)</th>
+                                <th class="p-3 text-right text-emerald-300">โอนเพิ่ม (บาท)</th>
+                                <th class="p-3 text-center">สถานะดุล</th>
+                                <th class="p-3 text-center">เอกสารแนบ</th>
+                                <th class="p-3">ผู้บันทึก / เวลา</th>
+                                <th class="p-3 text-center">จัดการ</th>
+                            </tr>
+                        </thead>
+                        <tbody id="records-table-body" class="divide-y divide-slate-200 bg-white">
+                            <tr>
+                                <td colspan="9" class="p-8 text-center text-slate-400">
+                                    <i class="fa-solid fa-folder-open text-3xl mb-2 block"></i>
+                                    กำลังโหลดข้อมูลคำขอ...
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <!-- ================= TAB 3: DASHBOARD & ANALYTICS ================= -->
+        <div id="tab-content-analytics" class="tab-content hidden space-y-6">
+            
+            <!-- KPI CARDS GRID -->
+            <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
+                
+                <!-- KPI 1 -->
+                <div class="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm flex flex-col justify-between">
+                    <div class="flex items-center justify-between text-slate-500 mb-2">
+                        <span class="text-xs font-semibold">จำนวนคำขอทั้งหมด</span>
+                        <div class="w-8 h-8 rounded-lg bg-blue-50 text-rid-600 flex items-center justify-center">
+                            <i class="fa-solid fa-file-invoice text-sm"></i>
+                        </div>
+                    </div>
+                    <div>
+                        <div class="text-2xl font-extrabold text-slate-800 font-mono" id="kpi-total-docs">0</div>
+                        <div class="text-[11px] text-slate-500 mt-1">รายการคำขอที่บันทึกไว้</div>
+                    </div>
+                </div>
+
+                <!-- KPI 2 -->
+                <div class="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm flex flex-col justify-between">
+                    <div class="flex items-center justify-between text-slate-500 mb-2">
+                        <span class="text-xs font-semibold">ยอดโอนลด (งานช้า) สะสม</span>
+                        <div class="w-8 h-8 rounded-lg bg-rose-50 text-rose-600 flex items-center justify-center">
+                            <i class="fa-solid fa-arrow-down-wide-short text-sm"></i>
+                        </div>
+                    </div>
+                    <div>
+                        <div class="text-lg font-extrabold text-rose-600 font-mono" id="kpi-total-slow-amount">0.00</div>
+                        <div class="text-[11px] text-slate-500 mt-1">บาท (รวมทุกคำขอ)</div>
+                    </div>
+                </div>
+
+                <!-- KPI 3 -->
+                <div class="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm flex flex-col justify-between">
+                    <div class="flex items-center justify-between text-slate-500 mb-2">
+                        <span class="text-xs font-semibold">ยอดโอนเพิ่ม (งานเร็ว) สะสม</span>
+                        <div class="w-8 h-8 rounded-lg bg-emerald-50 text-emerald-600 flex items-center justify-center">
+                            <i class="fa-solid fa-arrow-up-wide-short text-sm"></i>
+                        </div>
+                    </div>
+                    <div>
+                        <div class="text-lg font-extrabold text-emerald-600 font-mono" id="kpi-total-fast-amount">0.00</div>
+                        <div class="text-[11px] text-slate-500 mt-1">บาท (รวมทุกคำขอ)</div>
+                    </div>
+                </div>
+
+                <!-- KPI 4 -->
+                <div class="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm flex flex-col justify-between">
+                    <div class="flex items-center justify-between text-slate-500 mb-2">
+                        <span class="text-xs font-semibold">รายการงานช้าทั้งหมด</span>
+                        <div class="w-8 h-8 rounded-lg bg-amber-50 text-amber-600 flex items-center justify-center">
+                            <i class="fa-solid fa-list-check text-sm"></i>
+                        </div>
+                    </div>
+                    <div>
+                        <div class="text-2xl font-extrabold text-slate-800 font-mono" id="kpi-count-slow-items">0</div>
+                        <div class="text-[11px] text-slate-500 mt-1">รายการ (รวม 2.1-2.5)</div>
+                    </div>
+                </div>
+
+                <!-- KPI 5 -->
+                <div class="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm flex flex-col justify-between">
+                    <div class="flex items-center justify-between text-slate-500 mb-2">
+                        <span class="text-xs font-semibold">รายการงานเร็วทั้งหมด</span>
+                        <div class="w-8 h-8 rounded-lg bg-teal-50 text-teal-600 flex items-center justify-center">
+                            <i class="fa-solid fa-bolt text-sm"></i>
+                        </div>
+                    </div>
+                    <div>
+                        <div class="text-2xl font-extrabold text-slate-800 font-mono" id="kpi-count-fast-items">0</div>
+                        <div class="text-[11px] text-slate-500 mt-1">รายการ (รวม 3.1-3.5)</div>
+                    </div>
+                </div>
+
+            </div>
+
+            <!-- CHARTS SECTION -->
+            <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                <!-- Chart 1: โอนลด ตามแผนงาน -->
+                <div class="bg-white rounded-2xl border border-slate-200 p-6 shadow-sm">
+                    <h3 class="font-bold text-slate-800 text-sm mb-4 flex items-center gap-2">
+                        <i class="fa-solid fa-chart-pie text-rose-500"></i>
+                        <span>สัดส่วนยอดโอนลด (งานช้า) แยกตาม 3 แผนงาน</span>
+                    </h3>
+                    <div class="h-64 relative flex items-center justify-center">
+                        <canvas id="chart-slow-plan"></canvas>
+                    </div>
+                </div>
+
+                <!-- Chart 2: โอนเพิ่ม ตามแผนงาน -->
+                <div class="bg-white rounded-2xl border border-slate-200 p-6 shadow-sm">
+                    <h3 class="font-bold text-slate-800 text-sm mb-4 flex items-center gap-2">
+                        <i class="fa-solid fa-chart-pie text-emerald-500"></i>
+                        <span>สัดส่วนยอดโอนเพิ่ม (งานเร็ว) แยกตาม 3 แผนงาน</span>
+                    </h3>
+                    <div class="h-64 relative flex items-center justify-center">
+                        <canvas id="chart-fast-plan"></canvas>
+                    </div>
+                </div>
+            </div>
+
+            <!-- TOP 5 RANKING TABLES -->
+            <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                
+                <!-- TOP 5 SLOW -->
+                <div class="bg-white rounded-2xl border border-slate-200 p-6 shadow-sm">
+                    <div class="flex items-center justify-between mb-4 border-b border-slate-100 pb-3">
+                        <h3 class="font-bold text-rose-700 text-sm flex items-center gap-2">
+                            <i class="fa-solid fa-turn-down text-rose-600"></i>
+                            <span>▼ 5 อันดับรายการโอนลดสูงสุด (งานช้า)</span>
+                        </h3>
+                    </div>
+                    <div class="overflow-x-auto">
+                        <table class="w-full text-xs text-left">
+                            <thead>
+                                <tr class="text-slate-500 border-b border-slate-200">
+                                    <th class="py-2">อันดับ / ชื่อรายการ</th>
+                                    <th class="py-2">แผนงาน/โครงการ</th>
+                                    <th class="py-2 text-right">ยอดโอนลด</th>
+                                </tr>
+                            </thead>
+                            <tbody id="top-slow-body" class="divide-y divide-slate-100">
+                                <tr><td colspan="3" class="py-4 text-center text-slate-400">ยังไม่มีข้อมูล</td></tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <!-- TOP 5 FAST -->
+                <div class="bg-white rounded-2xl border border-slate-200 p-6 shadow-sm">
+                    <div class="flex items-center justify-between mb-4 border-b border-slate-100 pb-3">
+                        <h3 class="font-bold text-emerald-700 text-sm flex items-center gap-2">
+                            <i class="fa-solid fa-turn-up text-emerald-600"></i>
+                            <span>▲ 5 อันดับรายการโอนเพิ่มสูงสุด (งานเร็ว)</span>
+                        </h3>
+                    </div>
+                    <div class="overflow-x-auto">
+                        <table class="w-full text-xs text-left">
+                            <thead>
+                                <tr class="text-slate-500 border-b border-slate-200">
+                                    <th class="py-2">อันดับ / ชื่อรายการ</th>
+                                    <th class="py-2">แผนงาน/โครงการ</th>
+                                    <th class="py-2 text-right">ยอดโอนเพิ่ม</th>
+                                </tr>
+                            </thead>
+                            <tbody id="top-fast-body" class="divide-y divide-slate-100">
+                                <tr><td colspan="3" class="py-4 text-center text-slate-400">ยังไม่มีข้อมูล</td></tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+            </div>
+        </div>
+
+        <!-- ================= TAB 4: AUDIT LOGS ================= -->
+        <div id="tab-content-logs" class="tab-content hidden space-y-6">
+            <div class="bg-white rounded-2xl shadow-sm border border-slate-200 p-6">
+                <h3 class="font-bold text-slate-800 text-base mb-4 flex items-center gap-2">
+                    <i class="fa-solid fa-clock-rotate-left text-teal-600"></i>
+                    <span>ประวัติการบันทึก / แก้ไข / ลบข้อมูล</span>
+                </h3>
+                <div class="overflow-x-auto rounded-xl border border-slate-200">
+                    <table class="w-full text-left text-xs border-collapse">
+                        <thead>
+                            <tr class="bg-slate-800 text-white">
+                                <th class="p-3">วัน-เวลา</th>
+                                <th class="p-3 text-center">การทำรายการ</th>
+                                <th class="p-3">เลขที่หนังสือ</th>
+                                <th class="p-3">ผู้ทำรายการ</th>
+                                <th class="p-3">รายละเอียดเพิ่มเติม</th>
+                            </tr>
+                        </thead>
+                        <tbody id="audit-log-body" class="divide-y divide-slate-100">
+                            <tr>
+                                <td colspan="5" class="p-6 text-center text-slate-400">ยังไม่มีประวัติการทำรายการ</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+    </main>
+
+    <!-- FOOTER WITH SYSTEM LOGO & SCOPE NOTE -->
+    <footer class="mt-12 text-center text-xs text-slate-400 py-8 border-t border-slate-200 bg-slate-900 text-slate-300">
+        <div class="max-w-7xl mx-auto px-4 flex flex-col items-center justify-center gap-4">
+            
+            <!-- System Rabbit Logo in Footer -->
+            <div class="flex items-center gap-3 bg-slate-800 px-4 py-2 rounded-2xl border border-slate-700">
+                <div class="w-10 h-10 rounded-xl bg-emerald-700 overflow-hidden border border-white/60 shrink-0">
+                    <svg id="footer-rabbit-svg" class="w-full h-full object-cover" viewBox="0 0 100 100">
+                        <rect width="100" height="100" fill="#2e7d32" />
+                        <circle cx="50" cy="50" r="48" fill="#43a047" />
+                        <path d="M 40,52 C 34,62 34,78 41,84 C 47,86 53,86 59,84 C 66,78 66,62 60,52 Z" fill="#ffffff" />
+                        <ellipse cx="50" cy="65" rx="8" ry="12" fill="#fafafa"/>
+                        <path d="M 43,36 C 35,20 36,8 43,10 C 47,12 47,24 46,36 Z" fill="#ffffff"/>
+                        <path d="M 42,32 C 38,20 39,12 43,13 C 45,14 45,23 44,32 Z" fill="#ffccbc"/>
+                        <path d="M 54,36 C 50,18 55,6 61,8 C 65,10 61,22 57,36 Z" fill="#ffffff"/>
+                        <path d="M 54,32 C 51,19 54,10 59,11 C 61,12 59,21 56,32 Z" fill="#ffccbc"/>
+                        <ellipse cx="50" cy="42" rx="11" ry="10" fill="#ffffff"/>
+                        <circle cx="55" cy="40" r="2" fill="#212121"/>
+                        <circle cx="55.6" cy="39.4" r="0.7" fill="#ffffff"/>
+                        <path d="M 58,43 Q 60,44 58,45 Z" fill="#ffab91"/>
+                    </svg>
+                    <img id="footer-custom-logo-img" class="w-full h-full object-cover hidden" alt="โลโก้ระบบ">
+                </div>
+                <div class="text-left">
+                    <p class="font-bold text-white text-xs">ระบบบริหารจัดการการขออนุมัติโอนเงินจัดสรร (งานช้า–เร็ว)</p>
+                    <p class="text-[11px] text-teal-300">กรมชลประทาน (Royal Irrigation Department)</p>
+                </div>
+            </div>
+
+            <!-- Mandatory Internal Note -->
+            <p class="max-w-2xl text-amber-300 bg-amber-500/15 border border-amber-500/40 px-4 py-2 rounded-xl text-xs font-medium leading-relaxed">
+                <i class="fa-solid fa-triangle-exclamation text-amber-400 mr-1.5"></i>
+                <strong>หมายเหตุ:</strong> ระบบนี้จัดทำขึ้นเพื่อใช้บริหารจัดการงบประมาณภายใน <strong>กองจัดทำงบประมาณด้านเศรษฐกิจ 2 ส่วนกระทรวงเกษตรและสหกรณ์ 3 และ 4</strong> เท่านั้น
+            </p>
+
+            <p class="text-[11px] text-slate-400">ออกแบบและพัฒนาระบบเพื่อรองรับการทำงานร่วมกันแบบ Real-time และการสรุปรายงานทางราชการ</p>
+        </div>
+    </footer>
+
+    <!-- FIREBASE v13.3.0 & APPLICATION LOGIC -->
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/13.3.0/firebase-app.js";
+        import { getAnalytics } from "https://www.gstatic.com/firebasejs/13.3.0/firebase-analytics.js";
+        import { getAuth, signInAnonymously, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/13.3.0/firebase-auth.js";
+        import { getFirestore, collection, doc, setDoc, deleteDoc, onSnapshot, serverTimestamp } from "https://www.gstatic.com/firebasejs/13.3.0/firebase-firestore.js";
+
+        // EXACT USER FIREBASE CONFIGURATION (slow-fast)
+        const firebaseConfig = {
+            apiKey: "AIzaSyDr0_TkQucGjqG9dULqaC7735FmfyE58ag",
+            authDomain: "slow-fast.firebaseapp.com",
+            projectId: "slow-fast",
+            storageBucket: "slow-fast.firebasestorage.app",
+            messagingSenderId: "358297787439",
+            appId: "1:358297787439:web:08a23044b83bd55b65bada",
+            measurementId: "G-ZVGQETJWPQ"
+        };
+
+        let app = null;
+        let analytics = null;
+        let db = null;
+        let auth = null;
+        let currentUser = null;
+        let recordsData = [];
+        let auditLogsData = [];
+        let editingDocId = null;
+
+        // 3 STANDARD RID BUDGET PLANS & SUB-PROGRAM MAPPINGS
+        const PLAN_OPTIONS = [
+            "แผนงานพื้นฐานด้านการสร้างการเติบโตบนคุณภาพชีวิตที่เป็นมิตรต่อสิ่งแวดล้อม",
+            "แผนงานยุทธศาสตร์เสริมสร้างประสิทธิภาพการบริหารจัดการทรัพยากรน้ำ",
+            "แผนงานบูรณาการบริหารจัดการทรัพยากรน้ำ"
+        ];
+
+        const SUBPLAN_MAPPING = {
+            "แผนงานพื้นฐานด้านการสร้างการเติบโตบนคุณภาพชีวิตที่เป็นมิตรต่อสิ่งแวดล้อม": [
+                "ผลผลิตการจัดการงานชลประทาน"
+            ],
+            "แผนงานยุทธศาสตร์เสริมสร้างประสิทธิภาพการบริหารจัดการทรัพยากรน้ำ": [
+                "โครงการส่งเสริมการดำเนินงานอันเนื่องมาจากพระราชดำริ",
+                "โครงการปรับปรุงและสนับสนุนการบริหารจัดการน้ำชลประทาน"
+            ],
+            "แผนงานบูรณาการบริหารจัดการทรัพยากรน้ำ": [
+                "โครงการจัดหาแหล่งน้ำ และเพิ่มพื้นที่ชลประทาน",
+                "โครงการป้องกัน และบรรเทาภัยจากน้ำ",
+                "อื่น ๆ ระบุ"
+            ]
+        };
+
+        let slowChartInstance = null;
+        let fastChartInstance = null;
+
+        // Initialize App & Firebase
+        window.addEventListener('DOMContentLoaded', async () => {
+            renderFormItems();
+            initUserIdentity();
+            initSystemLogo();
+            setupCharts();
+
+            try {
+                app = initializeApp(firebaseConfig);
+                try { analytics = getAnalytics(app); } catch(e) { console.log("Analytics init optional", e); }
+                db = getFirestore(app);
+                auth = getAuth(app);
+
+                await signInAnonymously(auth);
+
+                onAuthStateChanged(auth, (user) => {
+                    if (user) {
+                        currentUser = user;
+                        updateConnectionStatus(true);
+                        subscribeToFirestore();
+                    } else {
+                        updateConnectionStatus(false);
+                    }
+                });
+
+            } catch (err) {
+                console.warn("Firebase connection error:", err);
+                updateConnectionStatus(false);
+                loadLocalMockData();
+            }
+        });
+
+        // SYSTEM LOGO & CUSTOM UPLOAD HANDLER
+        function initSystemLogo() {
+            const savedLogo = localStorage.getItem('rid_system_logo');
+            if (savedLogo) {
+                setSystemLogoImage(savedLogo);
+            }
+        }
+
+        window.triggerLogoUpload = function() {
+            document.getElementById('logo-file-input')?.click();
+        }
+
+        window.handleLogoUpload = function(event) {
+            const file = event.target.files[0];
+            if (!file) return;
+
+            if (!file.type.startsWith('image/')) {
+                showToast('กรุณาเลือกไฟล์ภาพเท่านั้น', 'warning');
+                return;
+            }
+
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                const dataUrl = e.target.result;
+                localStorage.setItem('rid_system_logo', dataUrl);
+                setSystemLogoImage(dataUrl);
+                showToast('อัปเดตโลโก้ประจำระบบเรียบร้อยแล้ว', 'success');
+            };
+            reader.readAsDataURL(file);
+        }
+
+        function setSystemLogoImage(dataUrl) {
+            const customImg = document.getElementById('custom-logo-img');
+            const defaultSvg = document.getElementById('default-rabbit-svg');
+            const footerCustomImg = document.getElementById('footer-custom-logo-img');
+            const footerDefaultSvg = document.getElementById('footer-rabbit-svg');
+
+            if (dataUrl) {
+                if (customImg) { customImg.src = dataUrl; customImg.classList.remove('hidden'); }
+                if (defaultSvg) { defaultSvg.classList.add('hidden'); }
+                if (footerCustomImg) { footerCustomImg.src = dataUrl; footerCustomImg.classList.remove('hidden'); }
+                if (footerDefaultSvg) { footerDefaultSvg.classList.add('hidden'); }
+            }
+        }
+
+        // DYNAMIC FORM ITEMS RENDER (2.1 - 2.5 and 3.1 - 3.5)
+        function renderFormItems() {
+            const slowContainer = document.getElementById('slow-items-container');
+            const fastContainer = document.getElementById('fast-items-container');
+
+            let slowHTML = '';
+            for (let i = 1; i <= 5; i++) {
+                slowHTML += `
+                <div class="p-4 rounded-xl border border-rose-200/80 bg-rose-50/30 space-y-3">
+                    <div class="flex items-center justify-between text-xs font-bold text-rose-800">
+                        <span>รายการ 2.${i} (โอนลด)</span>
+                        <span class="text-[11px] text-slate-400 font-normal">ไม่บังคับกรอก</span>
+                    </div>
+                    <div class="grid grid-cols-1 md:grid-cols-4 gap-3">
+                        <!-- 1. ชื่อแผนงาน -->
+                        <div class="md:col-span-1">
+                            <label class="block text-[11px] font-medium text-slate-600 mb-1">ชื่อแผนงาน</label>
+                            <select id="slow-plan-${i}" onchange="handlePlanChange('slow', ${i})" class="w-full text-xs px-2.5 py-2 rounded-lg border border-slate-300 focus:ring-1 focus:ring-rose-500 bg-white">
+                                <option value="">-- เลือกชื่อแผนงาน --</option>
+                                ${PLAN_OPTIONS.map(p => `<option value="${p}">${p}</option>`).join('')}
+                            </select>
+                        </div>
+                        <!-- 2. แผนงาน/โครงการ (Cascading Dropdown) -->
+                        <div class="md:col-span-1">
+                            <label class="block text-[11px] font-medium text-slate-600 mb-1">แผนงาน/โครงการ</label>
+                            <select id="slow-subplan-${i}" onchange="handleSubplanChange('slow', ${i})" class="w-full text-xs px-2.5 py-2 rounded-lg border border-slate-300 focus:ring-1 focus:ring-rose-500 bg-white">
+                                <option value="">-- เลือกชื่อแผนงานก่อน --</option>
+                            </select>
+                            <input type="text" id="slow-subplan-custom-${i}" oninput="updateTotalsCalculations()" placeholder="ระบุชื่อแผนงาน/โครงการ..." class="hidden mt-1.5 w-full text-xs px-2.5 py-1.5 rounded-lg border border-rose-300 focus:ring-1 focus:ring-rose-500 bg-white">
+                        </div>
+                        <!-- 3. ชื่อรายการ (Autocomplete / Datalist) -->
+                        <div class="md:col-span-1">
+                            <label class="block text-[11px] font-medium text-slate-600 mb-1">ชื่อรายการ</label>
+                            <input type="text" id="slow-name-${i}" list="existing-item-names-datalist" oninput="updateTotalsCalculations()" placeholder="เช่น ซ่อมแซมคันคลองส่งน้ำ..." class="w-full text-xs px-2.5 py-2 rounded-lg border border-slate-300 focus:ring-1 focus:ring-rose-500">
+                        </div>
+                        <!-- 4. จำนวนเงิน (บาท) -->
+                        <div class="md:col-span-1">
+                            <label class="block text-[11px] font-medium text-slate-600 mb-1">จำนวนเงินโอนลด (บาท)</label>
+                            <input type="number" step="0.01" min="0" id="slow-amount-${i}" oninput="updateTotalsCalculations()" placeholder="0.00" class="w-full text-xs px-2.5 py-2 rounded-lg border border-slate-300 focus:ring-1 focus:ring-rose-500 text-right font-mono font-semibold text-rose-700">
+                        </div>
+                    </div>
+                </div>`;
+            }
+            slowContainer.innerHTML = slowHTML;
+
+            let fastHTML = '';
+            for (let i = 1; i <= 5; i++) {
+                fastHTML += `
+                <div class="p-4 rounded-xl border border-emerald-200/80 bg-emerald-50/30 space-y-3">
+                    <div class="flex items-center justify-between text-xs font-bold text-emerald-800">
+                        <span>รายการ 3.${i} (โอนเพิ่ม)</span>
+                        <span class="text-[11px] text-slate-400 font-normal">ไม่บังคับกรอก</span>
+                    </div>
+                    <div class="grid grid-cols-1 md:grid-cols-4 gap-3">
+                        <!-- 1. ชื่อแผนงาน -->
+                        <div class="md:col-span-1">
+                            <label class="block text-[11px] font-medium text-slate-600 mb-1">ชื่อแผนงาน</label>
+                            <select id="fast-plan-${i}" onchange="handlePlanChange('fast', ${i})" class="w-full text-xs px-2.5 py-2 rounded-lg border border-slate-300 focus:ring-1 focus:ring-emerald-500 bg-white">
+                                <option value="">-- เลือกชื่อแผนงาน --</option>
+                                ${PLAN_OPTIONS.map(p => `<option value="${p}">${p}</option>`).join('')}
+                            </select>
+                        </div>
+                        <!-- 2. แผนงาน/โครงการ (Cascading Dropdown) -->
+                        <div class="md:col-span-1">
+                            <label class="block text-[11px] font-medium text-slate-600 mb-1">แผนงาน/โครงการ</label>
+                            <select id="fast-subplan-${i}" onchange="handleSubplanChange('fast', ${i})" class="w-full text-xs px-2.5 py-2 rounded-lg border border-slate-300 focus:ring-1 focus:ring-emerald-500 bg-white">
+                                <option value="">-- เลือกชื่อแผนงานก่อน --</option>
+                            </select>
+                            <input type="text" id="fast-subplan-custom-${i}" oninput="updateTotalsCalculations()" placeholder="ระบุชื่อแผนงาน/โครงการ..." class="hidden mt-1.5 w-full text-xs px-2.5 py-1.5 rounded-lg border border-emerald-300 focus:ring-1 focus:ring-emerald-500 bg-white">
+                        </div>
+                        <!-- 3. ชื่อรายการ (Autocomplete / Datalist) -->
+                        <div class="md:col-span-1">
+                            <label class="block text-[11px] font-medium text-slate-600 mb-1">ชื่อรายการ</label>
+                            <input type="text" id="fast-name-${i}" list="existing-item-names-datalist" oninput="updateTotalsCalculations()" placeholder="เช่น ก่อสร้างอาคารบังคับน้ำ..." class="w-full text-xs px-2.5 py-2 rounded-lg border border-slate-300 focus:ring-1 focus:ring-emerald-500">
+                        </div>
+                        <!-- 4. จำนวนเงิน (บาท) -->
+                        <div class="md:col-span-1">
+                            <label class="block text-[11px] font-medium text-slate-600 mb-1">จำนวนเงินโอนเพิ่ม (บาท)</label>
+                            <input type="number" step="0.01" min="0" id="fast-amount-${i}" oninput="updateTotalsCalculations()" placeholder="0.00" class="w-full text-xs px-2.5 py-2 rounded-lg border border-slate-300 focus:ring-1 focus:ring-emerald-500 text-right font-mono font-semibold text-emerald-700">
+                        </div>
+                    </div>
+                </div>`;
+            }
+            fastContainer.innerHTML = fastHTML;
+        }
+
+        // CASCADING DROPDOWN HANDLERS
+        window.handlePlanChange = function(type, index) {
+            const planSelect = document.getElementById(`${type}-plan-${index}`);
+            const subplanSelect = document.getElementById(`${type}-subplan-${index}`);
+            const customInput = document.getElementById(`${type}-subplan-custom-${index}`);
+            
+            const selectedPlan = planSelect.value;
+            subplanSelect.innerHTML = '<option value="">-- เลือกแผนงาน/โครงการ --</option>';
+            customInput.classList.add('hidden');
+            customInput.value = '';
+
+            if (selectedPlan && SUBPLAN_MAPPING[selectedPlan]) {
+                SUBPLAN_MAPPING[selectedPlan].forEach(sub => {
+                    const opt = document.createElement('option');
+                    opt.value = sub;
+                    opt.textContent = sub;
+                    subplanSelect.appendChild(opt);
+                });
+            } else {
+                subplanSelect.innerHTML = '<option value="">-- เลือกชื่อแผนงานก่อน --</option>';
+            }
+            updateTotalsCalculations();
+        }
+
+        window.handleSubplanChange = function(type, index) {
+            const subplanSelect = document.getElementById(`${type}-subplan-${index}`);
+            const customInput = document.getElementById(`${type}-subplan-custom-${index}`);
+            
+            if (subplanSelect.value === 'อื่น ๆ ระบุ') {
+                customInput.classList.remove('hidden');
+                customInput.focus();
+            } else {
+                customInput.classList.add('hidden');
+                customInput.value = '';
+            }
+            updateTotalsCalculations();
+        }
+
+        // USER IDENTITY HANDLER
+        function initUserIdentity() {
+            let savedName = sessionStorage.getItem('rid_user_name');
+            if (!savedName) {
+                savedName = "เจ้าหน้าที่ชลประทาน (" + Math.floor(1000 + Math.random() * 9000) + ")";
+                sessionStorage.setItem('rid_user_name', savedName);
+            }
+            document.getElementById('user-display-name').value = savedName;
+            document.getElementById('form-recorder-name').textContent = savedName;
+        }
+
+        window.saveUserName = function(newName) {
+            const trimmed = newName.trim() || "เจ้าหน้าที่ชลประทาน";
+            sessionStorage.setItem('rid_user_name', trimmed);
+            document.getElementById('user-display-name').value = trimmed;
+            document.getElementById('form-recorder-name').textContent = trimmed;
+            showToast('อัปเดตชื่อผู้ใช้งานแล้ว', 'info');
+        }
+
+        function updateConnectionStatus(isOnline) {
+            const text = document.getElementById('connection-status-text');
+            const dot = document.getElementById('sync-dot');
+            const ping = document.getElementById('sync-ping');
+
+            if (isOnline) {
+                text.textContent = "เชื่อมต่อฐานข้อมูลกลาง Firebase (slow-fast) แบบ Real-time สำเร็จ";
+                dot.className = "relative inline-flex rounded-full h-2.5 w-2.5 bg-emerald-500";
+                ping.className = "animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75";
+            } else {
+                text.textContent = "โหมดข้อมูลท้องถิ่น (Local Mode - เชื่อมต่อ Firebase ไม่สำเร็จ)";
+                dot.className = "relative inline-flex rounded-full h-2.5 w-2.5 bg-amber-500";
+                ping.className = "hidden";
+            }
+        }
+
+        // FIRESTORE REAL-TIME SUBSCRIPTION
+        function subscribeToFirestore() {
+            if (!db) return;
+
+            // Subscribe to Request transfers collection
+            const requestsRef = collection(db, 'budget_transfer_requests');
+            onSnapshot(requestsRef, (snapshot) => {
+                const list = [];
+                snapshot.forEach(docSnap => {
+                    list.push({ id: docSnap.id, ...docSnap.data() });
+                });
+                // Sort by updatedAt descending
+                list.sort((a, b) => (b.updatedAtMillis || 0) - (a.updatedAtMillis || 0));
+                recordsData = list;
+                renderRecordsTable();
+                updateDashboardAnalytics();
+                updateItemNamesDatalist();
+            }, (error) => {
+                console.error("Firestore requests snapshot error:", error);
+                if (error.code === 'permission-denied') {
+                    showToast('คำเตือน: โปรดตรวจสอบ Firestore Security Rules ใน Firebase Console เพื่ออนุญาตให้อ่าน/เขียนข้อมูล', 'error');
+                }
+            });
+
+            // Subscribe to Audit Logs collection
+            const logsRef = collection(db, 'budget_transfer_audit_logs');
+            onSnapshot(logsRef, (snapshot) => {
+                const logs = [];
+                snapshot.forEach(docSnap => {
+                    logs.push({ id: docSnap.id, ...docSnap.data() });
+                });
+                logs.sort((a, b) => (b.timestampMillis || 0) - (a.timestampMillis || 0));
+                auditLogsData = logs;
+                renderAuditLogs();
+            }, (error) => {
+                console.error("Firestore audit logs error:", error);
+            });
+        }
+
+        // LOCAL MOCK DATA FALLBACK
+        function loadLocalMockData() {
+            recordsData = [
+                {
+                    id: "RID-1001",
+                    docNo: "กษ 0305/1042",
+                    docDate: "2026-11-10",
+                    subject: "ขออนุมัติโอนเปลี่ยนแปลงงบประมาณรายจ่ายประจำปี เพื่อถัวจ่ายรายการที่มีผลการปฏิบัติงานเร็วกว่าแผน",
+                    sourcePdfUrl: "https://www.rid.go.th",
+                    approvedPdfUrl: "",
+                    recordedBy: "นายสมชาย ชลประทาน",
+                    updatedAtMillis: Date.now() - 86400000,
+                    slowItems: [
+                        { plan: "แผนงานบูรณาการบริหารจัดการทรัพยากรน้ำ", subplan: "โครงการจัดหาแหล่งน้ำ และเพิ่มพื้นที่ชลประทาน", customSubplan: "", name: "งานปรับปรุงระบบส่งน้ำคลอง 1L", amount: 1500000 }
+                    ],
+                    fastItems: [
+                        { plan: "แผนงานบูรณาการบริหารจัดการทรัพยากรน้ำ", subplan: "โครงการป้องกัน และบรรเทาภัยจากน้ำ", customSubplan: "", name: "งานก่อสร้างอาคารบังคับน้ำป่าซาง", amount: 1500000 }
+                    ],
+                    totalSlow: 1500000,
+                    totalFast: 1500000
+                }
+            ];
+            renderRecordsTable();
+            updateDashboardAnalytics();
+            updateItemNamesDatalist();
+        }
+
+        // UPDATE ITEM NAMES AUTOCOMPLETE DATALIST
+        function updateItemNamesDatalist() {
+            const datalist = document.getElementById('existing-item-names-datalist');
+            const nameSet = new Set();
+
+            recordsData.forEach(r => {
+                if (r.slowItems) r.slowItems.forEach(i => { if (i.name) nameSet.add(i.name.trim()); });
+                if (r.fastItems) r.fastItems.forEach(i => { if (i.name) nameSet.add(i.name.trim()); });
+            });
+
+            datalist.innerHTML = Array.from(nameSet).map(name => `<option value="${escapeHtml(name)}">`).join('');
+        }
+
+        // DYNAMIC CALCULATIONS & BALANCE CHECK
+        window.updateTotalsCalculations = function() {
+            let totalSlow = 0;
+            for (let i = 1; i <= 5; i++) {
+                const val = parseFloat(document.getElementById(`slow-amount-${i}`)?.value || 0);
+                totalSlow += (isNaN(val) || val < 0) ? 0 : val;
+            }
+
+            let totalFast = 0;
+            for (let i = 1; i <= 5; i++) {
+                const val = parseFloat(document.getElementById(`fast-amount-${i}`)?.value || 0);
+                totalFast += (isNaN(val) || val < 0) ? 0 : val;
+            }
+
+            document.getElementById('total-slow-display').textContent = formatCurrency(totalSlow);
+            document.getElementById('total-fast-display').textContent = formatCurrency(totalFast);
+            document.getElementById('bar-slow-total').textContent = formatCurrency(totalSlow);
+            document.getElementById('bar-fast-total').textContent = formatCurrency(totalFast);
+
+            const badge = document.getElementById('balance-status-badge');
+            const diff = totalSlow - totalFast;
+
+            if (totalSlow === 0 && totalFast === 0) {
+                badge.className = "px-5 py-2.5 rounded-xl bg-slate-800 text-slate-300 text-sm font-semibold flex items-center gap-2 border border-slate-700 w-full md:w-auto justify-center";
+                badge.innerHTML = `<i class="fa-solid fa-clock text-slate-400"></i><span>รอกรอกข้อมูล</span>`;
+            } else if (Math.abs(diff) < 0.01) {
+                badge.className = "px-5 py-2.5 rounded-xl bg-emerald-500/20 text-emerald-300 text-sm font-semibold flex items-center gap-2 border border-emerald-500/40 w-full md:w-auto justify-center animate-pulse";
+                badge.innerHTML = `<i class="fa-solid fa-circle-check text-emerald-400 text-base"></i><span>ยอดเงินสมดุล (โอนลด = โอนเพิ่ม)</span>`;
+            } else {
+                const formatDiff = formatCurrency(Math.abs(diff));
+                badge.className = "px-5 py-2.5 rounded-xl bg-rose-500/20 text-rose-300 text-sm font-semibold flex items-center gap-2 border border-rose-500/40 w-full md:w-auto justify-center";
+                badge.innerHTML = `<i class="fa-solid fa-triangle-exclamation text-rose-400 text-base"></i><span>ยอดเงินไม่สมดุล (ผลต่าง ${formatDiff} บาท)</span>`;
+            }
+
+            generateAutoSummaryText(totalSlow, totalFast);
+        }
+
+        // AUTO-SUMMARY TEXT GENERATOR
+        function generateAutoSummaryText(totalSlow, totalFast) {
+            const docNo = document.getElementById('doc-no')?.value.trim() || '[เลขที่หนังสือ]';
+            const docDateVal = document.getElementById('doc-date')?.value;
+            const docDate = docDateVal ? formatDateThai(docDateVal) : '[วันที่]';
+            const subject = document.getElementById('doc-subject')?.value.trim() || '[ข้อความต้นเรื่อง]';
+
+            const slowList = [];
+            for (let i = 1; i <= 5; i++) {
+                const name = document.getElementById(`slow-name-${i}`)?.value.trim();
+                const amt = parseFloat(document.getElementById(`slow-amount-${i}`)?.value || 0);
+                const subplan = getSubplanValue('slow', i);
+                if (name && amt > 0) {
+                    slowList.push(`• ${name} [${subplan || 'ไม่ระบุแผนงาน/โครงการ'}] (${formatCurrency(amt)} บาท)`);
+                }
+            }
+
+            const fastList = [];
+            for (let i = 1; i <= 5; i++) {
+                const name = document.getElementById(`fast-name-${i}`)?.value.trim();
+                const amt = parseFloat(document.getElementById(`fast-amount-${i}`)?.value || 0);
+                const subplan = getSubplanValue('fast', i);
+                if (name && amt > 0) {
+                    fastList.push(`• ${name} [${subplan || 'ไม่ระบุแผนงาน/โครงการ'}] (${formatCurrency(amt)} บาท)`);
+                }
+            }
+
+            let text = `หนังสือกรมชลประทาน ที่ ${docNo} ลงวันที่ ${docDate}\n`;
+            text += `เรื่อง: ${subject}\n\n`;
+            text += `ด้วย กรมชลประทาน มีความจำเป็นต้องขออนุมัติโอนเปลี่ยนแปลงงบประมาณรายจ่ายประจำปี โดยมีรายละเอียดดังนี้:\n\n`;
+            text += `1. รายการงานที่ล่าช้ากว่าแผน (โอนลด) จำนวน ${slowList.length} รายการ รวมเป็นเงินทั้งสิ้น ${formatCurrency(totalSlow)} บาท\n`;
+            if (slowList.length > 0) text += slowList.join('\n') + '\n';
+            
+            text += `\n2. รายการงานที่ปฏิบัติงานเร็วกว่าแผน (โอนเพิ่ม) จำนวน ${fastList.length} รายการ รวมเป็นเงินทั้งสิ้น ${formatCurrency(totalFast)} บาท\n`;
+            if (fastList.length > 0) text += fastList.join('\n') + '\n';
+
+            const diff = totalSlow - totalFast;
+            text += `\nสรุปยอดดุลการโอนเปลี่ยนแปลง: `;
+            if (Math.abs(diff) < 0.01 && totalSlow > 0) {
+                text += `ยอดเงินสมดุลพอดี (โอนลดเท่ากับโอนเพิ่ม)`;
+            } else if (totalSlow === 0 && totalFast === 0) {
+                text += `ยังไม่ได้กรอกจำนวนเงิน`;
+            } else {
+                text += `ยอดเงินไม่สมดุล (มีผลต่าง ${formatCurrency(Math.abs(diff))} บาท)`;
+            }
+
+            document.getElementById('auto-summary-box').textContent = text;
+        }
+
+        function getSubplanValue(type, index) {
+            const subSelect = document.getElementById(`${type}-subplan-${index}`);
+            if (!subSelect) return '';
+            if (subSelect.value === 'อื่น ๆ ระบุ') {
+                const custom = document.getElementById(`${type}-subplan-custom-${index}`)?.value.trim();
+                return custom ? `อื่น ๆ ระบุ (${custom})` : 'อื่น ๆ ระบุ';
+            }
+            return subSelect.value || '';
+        }
+
+        // FORM SUBMIT TO FIRESTORE
+        window.handleFormSubmit = async function(e) {
+            e.preventDefault();
+
+            const docNo = document.getElementById('doc-no').value.trim();
+            const docDate = document.getElementById('doc-date').value;
+            const subject = document.getElementById('doc-subject').value.trim();
+            const sourcePdfUrl = document.getElementById('url-source-pdf').value.trim();
+            const approvedPdfUrl = document.getElementById('url-approved-pdf').value.trim();
+            const recordedBy = document.getElementById('user-display-name').value.trim() || "เจ้าหน้าที่ชลประทาน";
+
+            const slowItems = [];
+            let totalSlow = 0;
+            for (let i = 1; i <= 5; i++) {
+                const plan = document.getElementById(`slow-plan-${i}`).value;
+                const subplanSelectVal = document.getElementById(`slow-subplan-${i}`).value;
+                const customSubplan = document.getElementById(`slow-subplan-custom-${i}`).value.trim();
+                const name = document.getElementById(`slow-name-${i}`).value.trim();
+                const amt = parseFloat(document.getElementById(`slow-amount-${i}`).value || 0);
+
+                if (plan || subplanSelectVal || name || amt > 0) {
+                    slowItems.push({
+                        itemNo: `2.${i}`,
+                        plan,
+                        subplan: subplanSelectVal,
+                        customSubplan: subplanSelectVal === 'อื่น ๆ ระบุ' ? customSubplan : '',
+                        name,
+                        amount: amt
+                    });
+                    totalSlow += amt;
+                }
+            }
+
+            const fastItems = [];
+            let totalFast = 0;
+            for (let i = 1; i <= 5; i++) {
+                const plan = document.getElementById(`fast-plan-${i}`).value;
+                const subplanSelectVal = document.getElementById(`fast-subplan-${i}`).value;
+                const customSubplan = document.getElementById(`fast-subplan-custom-${i}`).value.trim();
+                const name = document.getElementById(`fast-name-${i}`).value.trim();
+                const amt = parseFloat(document.getElementById(`fast-amount-${i}`).value || 0);
+
+                if (plan || subplanSelectVal || name || amt > 0) {
+                    fastItems.push({
+                        itemNo: `3.${i}`,
+                        plan,
+                        subplan: subplanSelectVal,
+                        customSubplan: subplanSelectVal === 'อื่น ๆ ระบุ' ? customSubplan : '',
+                        name,
+                        amount: amt
+                    });
+                    totalFast += amt;
+                }
+            }
+
+            if (slowItems.length === 0 && fastItems.length === 0) {
+                showToast('กรุณากรอกรายการงานช้า (โอนลด) หรือ งานเร็ว (โอนเพิ่ม) อย่างน้อย 1 รายการ', 'warning');
+                return;
+            }
+
+            const now = Date.now();
+            const payload = {
+                docNo,
+                docDate,
+                subject,
+                sourcePdfUrl,
+                approvedPdfUrl,
+                recordedBy,
+                slowItems,
+                fastItems,
+                totalSlow,
+                totalFast,
+                updatedAtMillis: now,
+                updatedAtServer: serverTimestamp()
+            };
+
+            const isEdit = !!editingDocId;
+            const docId = isEdit ? editingDocId : "RID-" + now;
+
+            try {
+                if (db) {
+                    const docRef = doc(db, 'budget_transfer_requests', docId);
+                    await setDoc(docRef, payload, { merge: true });
+
+                    const logRef = doc(collection(db, 'budget_transfer_audit_logs'));
+                    await setDoc(logRef, {
+                        action: isEdit ? 'แก้ไขคำขอ' : 'สร้างคำขอใหม่',
+                        docNo: docNo,
+                        performedBy: recordedBy,
+                        timestampMillis: now,
+                        timestampServer: serverTimestamp(),
+                        details: `ยอดโอนลด ${formatCurrency(totalSlow)} บาท / โอนเพิ่ม ${formatCurrency(totalFast)} บาท`
+                    });
+                } else {
+                    if (isEdit) {
+                        const idx = recordsData.findIndex(r => r.id === docId);
+                        if (idx !== -1) recordsData[idx] = { id: docId, ...payload };
+                    } else {
+                        recordsData.unshift({ id: docId, ...payload });
+                    }
+                    renderRecordsTable();
+                    updateDashboardAnalytics();
+                    updateItemNamesDatalist();
+                }
+
+                showToast(isEdit ? 'อัปเดตข้อมูลสำเร็จใน Firebase เรียบร้อยแล้ว' : 'บันทึกคำขอลง Firebase เรียบร้อยแล้ว', 'success');
+                resetForm();
+                switchTab('records');
+
+            } catch (err) {
+                console.error("Save error:", err);
+                showToast('เกิดข้อผิดพลาดในการบันทึกลง Firebase: ' + err.message, 'error');
+            }
+        }
+
+        // RENDER RECORDS TABLE
+        function renderRecordsTable() {
+            const tbody = document.getElementById('records-table-body');
+            const searchVal = document.getElementById('records-search')?.value.toLowerCase() || '';
+
+            const filtered = recordsData.filter(r => {
+                const inDoc = (r.docNo || '').toLowerCase().includes(searchVal);
+                const inSubject = (r.subject || '').toLowerCase().includes(searchVal);
+                const inUser = (r.recordedBy || '').toLowerCase().includes(searchVal);
+                const inSlowName = (r.slowItems || []).some(i => (i.name || '').toLowerCase().includes(searchVal));
+                const inFastName = (r.fastItems || []).some(i => (i.name || '').toLowerCase().includes(searchVal));
+                return inDoc || inSubject || inUser || inSlowName || inFastName;
+            });
+
+            document.getElementById('badge-records-count').textContent = recordsData.length;
+
+            if (filtered.length === 0) {
+                tbody.innerHTML = `
+                <tr>
+                    <td colspan="9" class="p-8 text-center text-slate-400">
+                        <i class="fa-solid fa-folder-open text-3xl mb-2 block"></i>
+                        ไม่พบรายการคำขอที่ค้นหา
+                    </td>
+                </tr>`;
+                return;
+            }
+
+            let html = '';
+            filtered.forEach((r, idx) => {
+                const diff = (r.totalSlow || 0) - (r.totalFast || 0);
+                const isBalanced = Math.abs(diff) < 0.01 && (r.totalSlow > 0);
+                const statusBadge = isBalanced 
+                    ? `<span class="px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800 font-medium text-[10px]">สมดุล</span>`
+                    : `<span class="px-2 py-0.5 rounded-full bg-rose-100 text-rose-800 font-medium text-[10px]">ไม่สมดุล</span>`;
+
+                html += `
+                <tr class="hover:bg-slate-50 transition">
+                    <td class="p-3 text-center font-mono text-slate-400">${idx + 1}</td>
+                    <td class="p-3 font-semibold text-slate-800 whitespace-nowrap">
+                        <div>${escapeHtml(r.docNo)}</div>
+                        <div class="text-[10px] text-slate-400 font-normal">${formatDateThai(r.docDate)}</div>
+                    </td>
+                    <td class="p-3 max-w-xs truncate sarabun-text" title="${escapeHtml(r.subject)}">
+                        ${escapeHtml(r.subject)}
+                    </td>
+                    <td class="p-3 text-right font-mono font-semibold text-rose-600">${formatCurrency(r.totalSlow)}</td>
+                    <td class="p-3 text-right font-mono font-semibold text-emerald-600">${formatCurrency(r.totalFast)}</td>
+                    <td class="p-3 text-center">${statusBadge}</td>
+                    <td class="p-3 text-center">
+                        <div class="flex items-center justify-center gap-1.5">
+                            ${r.sourcePdfUrl ? `<a href="${escapeHtml(r.sourcePdfUrl)}" target="_blank" title="เปิดไฟล์ต้นเรื่อง" class="p-1.5 bg-blue-50 text-blue-600 rounded hover:bg-blue-100"><i class="fa-solid fa-file-pdf"></i></a>` : ''}
+                            ${r.approvedPdfUrl ? `<a href="${escapeHtml(r.approvedPdfUrl)}" target="_blank" title="เปิดไฟล์อนุมัติ" class="p-1.5 bg-emerald-50 text-emerald-600 rounded hover:bg-emerald-100"><i class="fa-solid fa-file-circle-check"></i></a>` : ''}
+                            ${!r.sourcePdfUrl && !r.approvedPdfUrl ? '<span class="text-slate-300">-</span>' : ''}
+                        </div>
+                    </td>
+                    <td class="p-3 text-slate-500 whitespace-nowrap">
+                        <div class="font-medium text-slate-700">${escapeHtml(r.recordedBy)}</div>
+                        <div class="text-[10px] text-slate-400">${r.updatedAtMillis ? new Date(r.updatedAtMillis).toLocaleDateString('th-TH') : ''}</div>
+                    </td>
+                    <td class="p-3 text-center whitespace-nowrap">
+                        <div class="flex items-center justify-center gap-2">
+                            <button onclick="editRecord('${r.id}')" class="px-2 py-1 bg-amber-50 hover:bg-amber-100 text-amber-700 rounded text-xs font-medium transition" title="แก้ไข">
+                                <i class="fa-solid fa-pen"></i> แก้ไข
+                            </button>
+                            <button onclick="confirmDeleteRecord('${r.id}', '${escapeHtml(r.docNo)}')" class="px-2 py-1 bg-rose-50 hover:bg-rose-100 text-rose-700 rounded text-xs font-medium transition" title="ลบ">
+                                <i class="fa-solid fa-trash"></i> ลบ
+                            </button>
+                        </div>
+                    </td>
+                </tr>`;
+            });
+            tbody.innerHTML = html;
+        }
+
+        // EDIT RECORD
+        window.editRecord = function(id) {
+            const item = recordsData.find(r => r.id === id);
+            if (!item) return;
+
+            editingDocId = id;
+            document.getElementById('edit-mode-banner').classList.remove('hidden');
+            document.getElementById('editing-doc-id').textContent = id;
+            document.getElementById('btn-submit-label').textContent = "บันทึกการแก้ไขคำขอ";
+
+            document.getElementById('doc-no').value = item.docNo || '';
+            document.getElementById('doc-date').value = item.docDate || '';
+            document.getElementById('doc-subject').value = item.subject || '';
+            document.getElementById('url-source-pdf').value = item.sourcePdfUrl || '';
+            document.getElementById('url-approved-pdf').value = item.approvedPdfUrl || '';
+
+            for (let i = 1; i <= 5; i++) {
+                document.getElementById(`slow-plan-${i}`).value = '';
+                document.getElementById(`slow-subplan-${i}`).innerHTML = '<option value="">-- เลือกชื่อแผนงานก่อน --</option>';
+                document.getElementById(`slow-subplan-custom-${i}`).classList.add('hidden');
+                document.getElementById(`slow-subplan-custom-${i}`).value = '';
+                document.getElementById(`slow-name-${i}`).value = '';
+                document.getElementById(`slow-amount-${i}`).value = '';
+
+                document.getElementById(`fast-plan-${i}`).value = '';
+                document.getElementById(`fast-subplan-${i}`).innerHTML = '<option value="">-- เลือกชื่อแผนงานก่อน --</option>';
+                document.getElementById(`fast-subplan-custom-${i}`).classList.add('hidden');
+                document.getElementById(`fast-subplan-custom-${i}`).value = '';
+                document.getElementById(`fast-name-${i}`).value = '';
+                document.getElementById(`fast-amount-${i}`).value = '';
+            }
+
+            if (item.slowItems && Array.isArray(item.slowItems)) {
+                item.slowItems.forEach((s, idx) => {
+                    const i = idx + 1;
+                    if (i <= 5) {
+                        const planSel = document.getElementById(`slow-plan-${i}`);
+                        planSel.value = s.plan || '';
+                        handlePlanChange('slow', i);
+
+                        const subSel = document.getElementById(`slow-subplan-${i}`);
+                        subSel.value = s.subplan || '';
+                        handleSubplanChange('slow', i);
+
+                        if (s.subplan === 'อื่น ๆ ระบุ') {
+                            document.getElementById(`slow-subplan-custom-${i}`).value = s.customSubplan || '';
+                        }
+                        document.getElementById(`slow-name-${i}`).value = s.name || '';
+                        document.getElementById(`slow-amount-${i}`).value = s.amount || '';
+                    }
+                });
+            }
+
+            if (item.fastItems && Array.isArray(item.fastItems)) {
+                item.fastItems.forEach((f, idx) => {
+                    const i = idx + 1;
+                    if (i <= 5) {
+                        const planSel = document.getElementById(`fast-plan-${i}`);
+                        planSel.value = f.plan || '';
+                        handlePlanChange('fast', i);
+
+                        const subSel = document.getElementById(`fast-subplan-${i}`);
+                        subSel.value = f.subplan || '';
+                        handleSubplanChange('fast', i);
+
+                        if (f.subplan === 'อื่น ๆ ระบุ') {
+                            document.getElementById(`fast-subplan-custom-${i}`).value = f.customSubplan || '';
+                        }
+                        document.getElementById(`fast-name-${i}`).value = f.name || '';
+                        document.getElementById(`fast-amount-${i}`).value = f.amount || '';
+                    }
+                });
+            }
+
+            updateTotalsCalculations();
+            switchTab('form');
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+            showToast(`กำลังแก้ไขคำขอหนังสือเลขที่ ${item.docNo}`, 'info');
+        }
+
+        window.cancelEditMode = function() {
+            editingDocId = null;
+            document.getElementById('edit-mode-banner').classList.add('hidden');
+            document.getElementById('btn-submit-label').textContent = "บันทึกข้อมูลคำขอ";
+            resetForm();
+        }
+
+        // DELETE RECORD
+        window.confirmDeleteRecord = function(id, docNo) {
+            const modal = document.getElementById('custom-modal');
+            document.getElementById('modal-title').textContent = 'ยืนยันการลบคำขอ';
+            document.getElementById('modal-message').textContent = `คุณต้องการลบคำขอหนังสือเลขที่ "${docNo}" ใช่หรือไม่? การกระทำนี้ไม่สามารถยกเลิกได้`;
+            
+            modal.classList.remove('hidden');
+
+            const cancelBtn = document.getElementById('modal-cancel-btn');
+            const confirmBtn = document.getElementById('modal-confirm-btn');
+
+            const closeModal = () => modal.classList.add('hidden');
+
+            cancelBtn.onclick = closeModal;
+            confirmBtn.onclick = async () => {
+                closeModal();
+                await deleteRecord(id, docNo);
+            };
+        }
+
+        async function deleteRecord(id, docNo) {
+            const currentUser = document.getElementById('user-display-name').value.trim() || 'เจ้าหน้าที่ชลประทาน';
+            const now = Date.now();
+            try {
+                if (db) {
+                    await deleteDoc(doc(db, 'budget_transfer_requests', id));
+                    
+                    const logRef = doc(collection(db, 'budget_transfer_audit_logs'));
+                    await setDoc(logRef, {
+                        action: 'ลบคำขอ',
+                        docNo: docNo,
+                        performedBy: currentUser,
+                        timestampMillis: now,
+                        timestampServer: serverTimestamp(),
+                        details: `ลบคำขอ ID: ${id}`
+                    });
+                } else {
+                    recordsData = recordsData.filter(r => r.id !== id);
+                    renderRecordsTable();
+                    updateDashboardAnalytics();
+                    updateItemNamesDatalist();
+                }
+
+                showToast(`ลบรายการคำขอเลขที่ ${docNo} เรียบร้อยแล้ว`, 'success');
+            } catch (err) {
+                console.error("Delete error:", err);
+                showToast('ไม่สามารถลบรายการได้: ' + err.message, 'error');
+            }
+        }
+
+        // AUDIT LOGS
+        function renderAuditLogs() {
+            const tbody = document.getElementById('audit-log-body');
+            if (!auditLogsData || auditLogsData.length === 0) {
+                tbody.innerHTML = `<tr><td colspan="5" class="p-6 text-center text-slate-400">ยังไม่มีประวัติการทำรายการ</td></tr>`;
+                return;
+            }
+
+            let html = '';
+            auditLogsData.forEach(log => {
+                let badgeClass = 'bg-slate-100 text-slate-700';
+                if (log.action === 'สร้างคำขอใหม่') badgeClass = 'bg-emerald-100 text-emerald-800';
+                if (log.action === 'แก้ไขคำขอ') badgeClass = 'bg-amber-100 text-amber-800';
+                if (log.action === 'ลบคำขอ') badgeClass = 'bg-rose-100 text-rose-800';
+
+                const timeStr = log.timestampMillis ? new Date(log.timestampMillis).toLocaleString('th-TH') : '-';
+
+                html += `
+                <tr class="hover:bg-slate-50 transition">
+                    <td class="p-3 text-slate-500 whitespace-nowrap">${timeStr}</td>
+                    <td class="p-3 text-center whitespace-nowrap">
+                        <span class="px-2.5 py-1 rounded-full text-[10px] font-semibold ${badgeClass}">${escapeHtml(log.action || '')}</span>
+                    </td>
+                    <td class="p-3 font-semibold text-slate-800 whitespace-nowrap">${escapeHtml(log.docNo || '-')}</td>
+                    <td class="p-3 text-slate-700 font-medium whitespace-nowrap">${escapeHtml(log.performedBy || 'ระบบ')}</td>
+                    <td class="p-3 text-slate-500 max-w-xs truncate">${escapeHtml(log.details || '')}</td>
+                </tr>`;
+            });
+            tbody.innerHTML = html;
+        }
+
+        // DASHBOARD ANALYTICS & CHARTS
+        function updateDashboardAnalytics() {
+            let totalDocs = recordsData.length;
+            let totalSlowAmt = 0;
+            let totalFastAmt = 0;
+            let countSlowItems = 0;
+            let countFastItems = 0;
+
+            const slowPlanMap = {};
+            const fastPlanMap = {};
+
+            PLAN_OPTIONS.forEach(p => {
+                slowPlanMap[p] = 0;
+                fastPlanMap[p] = 0;
+            });
+
+            const allSlowItems = [];
+            const allFastItems = [];
+
+            recordsData.forEach(r => {
+                totalSlowAmt += (r.totalSlow || 0);
+                totalFastAmt += (r.totalFast || 0);
+
+                if (r.slowItems && Array.isArray(r.slowItems)) {
+                    r.slowItems.forEach(item => {
+                        if (item.amount > 0) {
+                            countSlowItems++;
+                            const plan = item.plan || 'ไม่ระบุแผนงาน';
+                            slowPlanMap[plan] = (slowPlanMap[plan] || 0) + item.amount;
+                            allSlowItems.push(item);
+                        }
+                    });
+                }
+
+                if (r.fastItems && Array.isArray(r.fastItems)) {
+                    r.fastItems.forEach(item => {
+                        if (item.amount > 0) {
+                            countFastItems++;
+                            const plan = item.plan || 'ไม่ระบุแผนงาน';
+                            fastPlanMap[plan] = (fastPlanMap[plan] || 0) + item.amount;
+                            allFastItems.push(item);
+                        }
+                    });
+                }
+            });
+
+            document.getElementById('kpi-total-docs').textContent = totalDocs;
+            document.getElementById('kpi-total-slow-amount').textContent = formatCurrency(totalSlowAmt);
+            document.getElementById('kpi-total-fast-amount').textContent = formatCurrency(totalFastAmt);
+            document.getElementById('kpi-count-slow-items').textContent = countSlowItems;
+            document.getElementById('kpi-count-fast-items').textContent = countFastItems;
+
+            updateCharts(slowPlanMap, fastPlanMap);
+            renderTop5Tables(allSlowItems, allFastItems);
+        }
+
+        function setupCharts() {
+            const ctxSlow = document.getElementById('chart-slow-plan')?.getContext('2d');
+            const ctxFast = document.getElementById('chart-fast-plan')?.getContext('2d');
+
+            if (ctxSlow) {
+                slowChartInstance = new Chart(ctxSlow, {
+                    type: 'doughnut',
+                    data: { labels: [], datasets: [{ data: [], backgroundColor: ['#e11d48', '#f43f5e', '#fb7185', '#fda4af'] }] },
+                    options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { position: 'bottom', labels: { font: { family: 'Prompt', size: 10 } } } } }
+                });
+            }
+
+            if (ctxFast) {
+                fastChartInstance = new Chart(ctxFast, {
+                    type: 'doughnut',
+                    data: { labels: [], datasets: [{ data: [], backgroundColor: ['#059669', '#10b981', '#34d399', '#6ee7b7'] }] },
+                    options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { position: 'bottom', labels: { font: { family: 'Prompt', size: 10 } } } } }
+                });
+            }
+        }
+
+        function updateCharts(slowPlanMap, fastPlanMap) {
+            if (slowChartInstance) {
+                slowChartInstance.data.labels = Object.keys(slowPlanMap);
+                slowChartInstance.data.datasets[0].data = Object.values(slowPlanMap);
+                slowChartInstance.update();
+            }
+
+            if (fastChartInstance) {
+                fastChartInstance.data.labels = Object.keys(fastPlanMap);
+                fastChartInstance.data.datasets[0].data = Object.values(fastPlanMap);
+                fastChartInstance.update();
+            }
+        }
+
+        function renderTop5Tables(slowItems, fastItems) {
+            slowItems.sort((a, b) => b.amount - a.amount);
+            fastItems.sort((a, b) => b.amount - a.amount);
+
+            const topSlow = slowItems.slice(0, 5);
+            const topFast = fastItems.slice(0, 5);
+
+            const slowBody = document.getElementById('top-slow-body');
+            const fastBody = document.getElementById('top-fast-body');
+
+            if (topSlow.length === 0) {
+                slowBody.innerHTML = `<tr><td colspan="3" class="py-4 text-center text-slate-400">ยังไม่มีข้อมูล</td></tr>`;
+            } else {
+                slowBody.innerHTML = topSlow.map((item, idx) => {
+                    const displaySubplan = item.subplan === 'อื่น ๆ ระบุ' ? (item.customSubplan ? `อื่น ๆ (${item.customSubplan})` : 'อื่น ๆ') : (item.subplan || '-');
+                    return `
+                    <tr class="hover:bg-rose-50/50">
+                        <td class="py-2.5 font-medium text-slate-800">
+                            <span class="inline-block w-5 text-center font-bold text-rose-600">${idx + 1}.</span>
+                            ${escapeHtml(item.name || 'ไม่ระบุชื่อรายการ')}
+                        </td>
+                        <td class="py-2.5 text-slate-500">${escapeHtml(displaySubplan)}</td>
+                        <td class="py-2.5 text-right font-mono font-bold text-rose-600">${formatCurrency(item.amount)}</td>
+                    </tr>`;
+                }).join('');
+            }
+
+            if (topFast.length === 0) {
+                fastBody.innerHTML = `<tr><td colspan="3" class="py-4 text-center text-slate-400">ยังไม่มีข้อมูล</td></tr>`;
+            } else {
+                fastBody.innerHTML = topFast.map((item, idx) => {
+                    const displaySubplan = item.subplan === 'อื่น ๆ ระบุ' ? (item.customSubplan ? `อื่น ๆ (${item.customSubplan})` : 'อื่น ๆ') : (item.subplan || '-');
+                    return `
+                    <tr class="hover:bg-emerald-50/50">
+                        <td class="py-2.5 font-medium text-slate-800">
+                            <span class="inline-block w-5 text-center font-bold text-emerald-600">${idx + 1}.</span>
+                            ${escapeHtml(item.name || 'ไม่ระบุชื่อรายการ')}
+                        </td>
+                        <td class="py-2.5 text-slate-500">${escapeHtml(displaySubplan)}</td>
+                        <td class="py-2.5 text-right font-mono font-bold text-emerald-600">${formatCurrency(item.amount)}</td>
+                    </tr>`;
+                }).join('');
+            }
+        }
+
+        // TAB SWITCHER
+        window.switchTab = function(tabName) {
+            document.querySelectorAll('.tab-btn').forEach(btn => {
+                btn.className = 'tab-btn px-4 py-3 font-medium text-sm border-b-2 border-transparent text-slate-500 hover:text-slate-700 flex items-center gap-2 whitespace-nowrap transition';
+            });
+            document.querySelectorAll('.tab-content').forEach(content => {
+                content.classList.add('hidden');
+            });
+
+            const activeBtn = document.getElementById(`tab-btn-${tabName}`);
+            const activeContent = document.getElementById(`tab-content-${tabName}`);
+
+            if (activeBtn && activeContent) {
+                activeBtn.className = 'tab-btn active px-4 py-3 font-medium text-sm border-b-2 border-rid-600 text-rid-600 flex items-center gap-2 whitespace-nowrap transition';
+                activeContent.classList.remove('hidden');
+                activeContent.classList.add('fade-in');
+            }
+        }
+
+        // FORM RESET
+        window.resetForm = function() {
+            editingDocId = null;
+            document.getElementById('edit-mode-banner').classList.add('hidden');
+            document.getElementById('btn-submit-label').textContent = "บันทึกข้อมูลคำขอ";
+            document.getElementById('transfer-form').reset();
+
+            for (let i = 1; i <= 5; i++) {
+                document.getElementById(`slow-subplan-${i}`).innerHTML = '<option value="">-- เลือกชื่อแผนงานก่อน --</option>';
+                document.getElementById(`slow-subplan-custom-${i}`).classList.add('hidden');
+                document.getElementById(`fast-subplan-${i}`).innerHTML = '<option value="">-- เลือกชื่อแผนงานก่อน --</option>';
+                document.getElementById(`fast-subplan-custom-${i}`).classList.add('hidden');
+            }
+
+            updateTotalsCalculations();
+        }
+
+        // FILTER RECORDS
+        window.filterRecords = function() {
+            renderRecordsTable();
+        }
+
+        // PDF LAUNCHER
+        window.openPdfLink = function(inputId) {
+            const url = document.getElementById(inputId)?.value.trim();
+            if (url) {
+                window.open(url, '_blank');
+            } else {
+                showToast('กรุณาระบุ URL ของไฟล์ PDF ก่อนกดเปิด', 'warning');
+            }
+        }
+
+        // COPY SUMMARY TEXT
+        window.copySummaryText = function() {
+            const summaryBox = document.getElementById('auto-summary-box');
+            const text = summaryBox.textContent;
+            
+            if (!text || text.includes('กรุณากรอกข้อมูล')) {
+                showToast('ยังไม่มีข้อความสรุปให้คัดลอก', 'warning');
+                return;
+            }
+
+            const el = document.createElement('textarea');
+            el.value = text;
+            el.setAttribute('readonly', '');
+            el.style.position = 'absolute';
+            el.style.left = '-9999px';
+            document.body.appendChild(el);
+            el.select();
+            
+            try {
+                const successful = document.execCommand('copy');
+                if (successful) {
+                    showToast('คัดลอกข้อความสรุปเรียบร้อยแล้ว', 'success');
+                } else {
+                    showToast('คัดลอกไม่สำเร็จ กรุณาคลุมข้อความคัดลอกเอง', 'warning');
+                }
+            } catch (err) {
+                showToast('คัดลอกไม่สำเร็จ', 'error');
+            } finally {
+                document.body.removeChild(el);
+            }
+        }
+
+        // EXPORT COMPREHENSIVE CSV (ALL FORM FIELDS INCLUDED)
+        window.exportToCSV = function() {
+            if (recordsData.length === 0) {
+                showToast('ไม่มีข้อมูลสำหรับส่งออก', 'warning');
+                return;
+            }
+
+            let csvContent = "\uFEFF"; // UTF-8 BOM for Thai Excel
+
+            // Headers: General info + Slow Items 2.1-2.5 + Fast Items 3.1-3.5
+            const headers = [
+                "ลำดับคำขอ (ID)",
+                "ผู้บันทึก/แก้ไข",
+                "วันเวลาบันทึก/แก้ไขล่าสุด",
+                "หนังสือกรมชลประทาน ที่",
+                "ลงวันที่",
+                "ข้อความต้นเรื่อง",
+                "URL ไฟล์ต้นเรื่อง (PDF)",
+                "URL ไฟล์อนุมัติ (PDF)",
+                "ยอดรวมโอนลด (2.6)",
+                "ยอดรวมโอนเพิ่ม (3.6)",
+                "สถานะความสมดุล"
+            ];
+
+            // Add columns for Slow Items 2.1 to 2.5
+            for (let i = 1; i <= 5; i++) {
+                headers.push(`2.${i} ชื่อแผนงาน (โอนลด)`);
+                headers.push(`2.${i} แผนงาน/โครงการ (โอนลด)`);
+                headers.push(`2.${i} รายละเอียดอื่น ๆ ระบุ (โอนลด)`);
+                headers.push(`2.${i} ชื่อรายการ (โอนลด)`);
+                headers.push(`2.${i} จำนวนเงินโอนลด (บาท)`);
+            }
+
+            // Add columns for Fast Items 3.1 to 3.5
+            for (let i = 1; i <= 5; i++) {
+                headers.push(`3.${i} ชื่อแผนงาน (โอนเพิ่ม)`);
+                headers.push(`3.${i} แผนงาน/โครงการ (โอนเพิ่ม)`);
+                headers.push(`3.${i} รายละเอียดอื่น ๆ ระบุ (โอนเพิ่ม)`);
+                headers.push(`3.${i} ชื่อรายการ (โอนเพิ่ม)`);
+                headers.push(`3.${i} จำนวนเงินโอนเพิ่ม (บาท)`);
+            }
+
+            csvContent += headers.map(h => `"${h}"`).join(",") + "\n";
+
+            recordsData.forEach(r => {
+                const diff = (r.totalSlow || 0) - (r.totalFast || 0);
+                const isBalanced = Math.abs(diff) < 0.01 && (r.totalSlow > 0);
+                const statusStr = isBalanced ? "สมดุล" : "ไม่สมดุล";
+
+                const row = [
+                    cleanCsvVal(r.id),
+                    cleanCsvVal(r.recordedBy),
+                    cleanCsvVal(r.updatedAtMillis ? new Date(r.updatedAtMillis).toLocaleString('th-TH') : ''),
+                    cleanCsvVal(r.docNo),
+                    cleanCsvVal(r.docDate),
+                    cleanCsvVal(r.subject),
+                    cleanCsvVal(r.sourcePdfUrl),
+                    cleanCsvVal(r.approvedPdfUrl),
+                    r.totalSlow || 0,
+                    r.totalFast || 0,
+                    cleanCsvVal(statusStr)
+                ];
+
+                // Map Slow Items 2.1 - 2.5
+                for (let i = 0; i < 5; i++) {
+                    const item = (r.slowItems && r.slowItems[i]) ? r.slowItems[i] : {};
+                    row.push(cleanCsvVal(item.plan));
+                    row.push(cleanCsvVal(item.subplan));
+                    row.push(cleanCsvVal(item.customSubplan));
+                    row.push(cleanCsvVal(item.name));
+                    row.push(item.amount || 0);
+                }
+
+                // Map Fast Items 3.1 - 3.5
+                for (let i = 0; i < 5; i++) {
+                    const item = (r.fastItems && r.fastItems[i]) ? r.fastItems[i] : {};
+                    row.push(cleanCsvVal(item.plan));
+                    row.push(cleanCsvVal(item.subplan));
+                    row.push(cleanCsvVal(item.customSubplan));
+                    row.push(cleanCsvVal(item.name));
+                    row.push(item.amount || 0);
+                }
+
+                csvContent += row.join(",") + "\n";
+            });
+
+            const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+            const url = URL.createObjectURL(blob);
+            const link = document.createElement("a");
+            link.setAttribute("href", url);
+            link.setAttribute("download", `ขออนุมัติโอนเงินจัดสรร_กรมชลประทาน_${new Date().toISOString().slice(0,10)}.csv`);
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+
+            showToast('ส่งออกไฟล์ CSV สมบูรณ์แล้ว', 'success');
+        }
+
+        function cleanCsvVal(val) {
+            if (!val) return '""';
+            const str = String(val).replace(/"/g, '""');
+            return `"${str}"`;
+        }
+
+        // TOAST NOTIFICATIONS
+        function showToast(message, type = 'info') {
+            const container = document.getElementById('toast-container');
+            const toast = document.createElement('div');
+            
+            let bgClass = 'bg-slate-800 text-white';
+            let icon = 'fa-info-circle text-blue-400';
+            if (type === 'success') { bgClass = 'bg-slate-900 text-white border-l-4 border-emerald-500'; icon = 'fa-circle-check text-emerald-400'; }
+            if (type === 'warning') { bgClass = 'bg-slate-900 text-white border-l-4 border-amber-500'; icon = 'fa-triangle-exclamation text-amber-400'; }
+            if (type === 'error') { bgClass = 'bg-slate-900 text-white border-l-4 border-rose-500'; icon = 'fa-circle-xmark text-rose-400'; }
+
+            toast.className = `p-4 rounded-xl shadow-2xl flex items-center gap-3 text-sm font-medium transition transform translate-y-2 opacity-0 pointer-events-auto ${bgClass}`;
+            toast.innerHTML = `<i class="fa-solid ${icon} text-lg"></i><span class="flex-1">${message}</span>`;
+            
+            container.appendChild(toast);
+
+            requestAnimationFrame(() => {
+                toast.classList.remove('translate-y-2', 'opacity-0');
+            });
+
+            setTimeout(() => {
+                toast.classList.add('opacity-0', 'translate-y-2');
+                setTimeout(() => toast.remove(), 300);
+            }, 3500);
+        }
+
+        // FORMAT UTILITIES
+        function formatCurrency(val) {
+            const num = parseFloat(val);
+            if (isNaN(num)) return "0.00";
+            return num.toLocaleString('th-TH', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+        }
+
+        function formatDateThai(dateStr) {
+            if (!dateStr) return '';
+            const d = new Date(dateStr);
+            if (isNaN(d.getTime())) return dateStr;
+            const months = ['ม.ค.', 'ก.พ.', 'มี.ค.', 'เม.ย.', 'พ.ค.', 'มิ.ย.', 'ก.ค.', 'ส.ค.', 'ก.ย.', 'ต.ค.', 'พ.ย.', 'ธ.ค.'];
+            return `${d.getDate()} ${months[d.getMonth()]} ${d.getFullYear() + 543}`;
+        }
+
+        function escapeHtml(str) {
+            if (!str) return '';
+            return String(str)
+                .replace(/&/g, "&amp;")
+                .replace(/</g, "&lt;")
+                .replace(/>/g, "&gt;")
+                .replace(/"/g, "&quot;")
+                .replace(/'/g, "&#039;");
+        }
+    </script>
+</body>
+</html>
